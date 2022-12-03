@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/gob"
 	"errors"
-	"fmt"
 	"html/template"
 	"io"
 	"log"
@@ -34,16 +33,12 @@ type (
 	M map[string]interface{}
 )
 
-const (
-	SESSION_NAME           = "session"
-	SESSION_DATASTORE_NAME = "data"
-)
-
 var (
 	err_invalid_cookie error               = errors.New("invalid cookie")
 	mastAppConfigBase  *mastodon.AppConfig = nil
 	mainDB             *mongo.Database     = nil
 	mainValidator                          = validator.New()
+	mainConfig         *AppConfig
 )
 
 func init() {
@@ -52,23 +47,27 @@ func init() {
 }
 
 func main() {
-	mongoURI := &url.URL{
-		Scheme: "mongodb",
-		User:   url.UserPassword(os.Getenv("DB_USER"), os.Getenv("DB_PASS")),
-		Host:   fmt.Sprintf("%s:%s", os.Getenv("DB_HOST"), os.Getenv("DB_PORT")),
-	}
-	dbContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	dbClient, err := mongo.Connect(dbContext, options.Client().ApplyURI(mongoURI.String()))
+	var err error
+
+	// Load config from environment variables and .env
+	mainConfig, err = loadConfig(os.Getenv("AUDON_ENV"))
 	if err != nil {
 		log.Fatalln(err)
 		os.Exit(1)
 	}
-	mainDB = dbClient.Database(os.Getenv("DB_NAME"))
-	err = createIndexes(dbContext)
+
+	dbContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	dbClient, err := mongo.Connect(dbContext, options.Client().ApplyURI(mainConfig.MongoURL.String()))
 	if err != nil {
 		log.Fatalln(err)
 		os.Exit(2)
+	}
+	mainDB = dbClient.Database(mainConfig.DBName)
+	err = createIndexes(dbContext)
+	if err != nil {
+		log.Fatalln(err)
+		os.Exit(3)
 	}
 
 	e := echo.New()
@@ -79,11 +78,7 @@ func main() {
 	}
 	e.Renderer = t
 	e.Validator = &CustomValidator{validator: mainValidator}
-	secret := os.Getenv("SESSION_SECRET")
-	if secret == "" {
-		secret = "dev"
-	}
-	e.Use(session.Middleware(sessions.NewCookieStore([]byte(secret))))
+	e.Use(session.Middleware(sessions.NewCookieStore([]byte(mainConfig.SeesionSecret))))
 	// e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
 	// 	CookiePath:  "/",
 	// 	TokenLookup: "header:X-CSRF-Token,form:csrf",
@@ -135,21 +130,14 @@ func getAppConfig(server string) (*mastodon.AppConfig, error) {
 		}, nil
 	}
 
-	localDomain := os.Getenv("LOCAL_DOMAIN")
 	redirectURI := "urn:ietf:wg:oauth:2.0:oob"
-	if localDomain != "" {
-		err := mainValidator.Var(localDomain, "hostname|hostname_port")
-		if err != nil {
-			return nil, err
-		}
-		u := &url.URL{
-			Host:   localDomain,
-			Scheme: "http",
-			Path:   "/",
-		}
-		u = u.JoinPath("app", "oauth")
-		redirectURI = u.String()
+	u := &url.URL{
+		Host:   mainConfig.LocalDomain,
+		Scheme: "http",
+		Path:   "/",
 	}
+	u = u.JoinPath("app", "oauth")
+	redirectURI = u.String()
 
 	conf := &mastodon.AppConfig{
 		ClientName:   "Audon",

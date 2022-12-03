@@ -12,14 +12,7 @@
             "cwd": "${workspaceFolder}",
             "program": ".",
             "env": {
-                "LOCAL_DOMAIN": "localhost:1323",
-                "SESSION_SECRET": "dev",
-                "DB_HOST": "localhost",
-                "DB_PORT": "27017",
-                "DB_NAME": "audon",
-                "DB_USER": "root",
-                "DB_PASS": "example",
-                "APP_ENV": "development"
+                "AUDON_ENV": "development"
             }
         }
     ]

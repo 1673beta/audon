@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/sessions"
-	nanoid "github.com/jaevor/go-nanoid"
+	"github.com/jaevor/go-nanoid"
 	"github.com/labstack/echo/v4"
 	mastodon "github.com/mattn/go-mastodon"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -121,7 +121,8 @@ func oauthHandler(c echo.Context) (err error) {
 
 	coll := mainDB.Collection(COLLECTION_USER)
 	if result, dbErr := findUserByRemote(c.Request().Context(), string(acc.ID), acc.URL); dbErr == mongo.ErrNoDocuments {
-		canonic, err := nanoid.Standard(21)
+		// Create user if not yet registered
+		canonic, err := nanoid.Standard(21) // Should AudonID be sortable?
 		if err != nil {
 			c.Logger().Error(err)
 			return echo.NewHTTPError(http.StatusInternalServerError)
@@ -141,6 +142,7 @@ func oauthHandler(c echo.Context) (err error) {
 		c.Logger().Error(dbErr)
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	} else if result != nil {
+		// Set setssion's Audon ID if already registered
 		data.AudonID = result.AudonID
 	}
 
