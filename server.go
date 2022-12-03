@@ -1,0 +1,212 @@
+package main
+
+import (
+	"context"
+	"encoding/gob"
+	"errors"
+	"fmt"
+	"html/template"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"time"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/gorilla/sessions"
+	"github.com/labstack/echo-contrib/session"
+	"github.com/labstack/echo/v4"
+	"github.com/mattn/go-mastodon"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+type (
+	Template struct {
+		templates *template.Template
+	}
+
+	CustomValidator struct {
+		validator *validator.Validate
+	}
+
+	M map[string]interface{}
+)
+
+const (
+	SESSION_NAME           = "session"
+	SESSION_DATASTORE_NAME = "data"
+)
+
+var (
+	err_invalid_cookie error               = errors.New("invalid cookie")
+	mastAppConfigBase  *mastodon.AppConfig = nil
+	mainDB             *mongo.Database     = nil
+	mainValidator                          = validator.New()
+)
+
+func init() {
+	gob.Register(&SessionData{})
+	gob.Register(&M{})
+}
+
+func main() {
+	mongoURI := &url.URL{
+		Scheme: "mongodb",
+		User:   url.UserPassword(os.Getenv("DB_USER"), os.Getenv("DB_PASS")),
+		Host:   fmt.Sprintf("%s:%s", os.Getenv("DB_HOST"), os.Getenv("DB_PORT")),
+	}
+	dbContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	dbClient, err := mongo.Connect(dbContext, options.Client().ApplyURI(mongoURI.String()))
+	if err != nil {
+		log.Fatalln(err)
+		os.Exit(1)
+	}
+	mainDB = dbClient.Database(os.Getenv("DB_NAME"))
+	err = createIndexes(dbContext)
+	if err != nil {
+		log.Fatalln(err)
+		os.Exit(2)
+	}
+
+	e := echo.New()
+	defer e.Close()
+
+	t := &Template{
+		templates: template.Must(template.ParseFiles("audon-fe/index.html", "audon-fe/dist/index.html")),
+	}
+	e.Renderer = t
+	e.Validator = &CustomValidator{validator: mainValidator}
+	secret := os.Getenv("SESSION_SECRET")
+	if secret == "" {
+		secret = "dev"
+	}
+	e.Use(session.Middleware(sessions.NewCookieStore([]byte(secret))))
+	// e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
+	// 	CookiePath:  "/",
+	// 	TokenLookup: "header:X-CSRF-Token,form:csrf",
+	// }))
+
+	e.GET("/api/v1/verify", verifyHandler)
+	e.POST("/app/login", loginHandler)
+	e.GET("/app/oauth", oauthHandler)
+	e.Static("/assets", "audon-fe/dist/assets")
+
+	e.Logger.Debug(e.Start(":1323"))
+}
+
+// handler for GET to /api/v1/verify
+func verifyHandler(c echo.Context) (err error) {
+	sess, err := getSession(c)
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	valid, _ := verifyTokenInSession(c, sess)
+	if !valid {
+		return c.NoContent(http.StatusUnauthorized)
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
+func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return t.templates.ExecuteTemplate(w, name, data)
+}
+
+func (cv *CustomValidator) Validate(i interface{}) error {
+	if err := cv.validator.Struct(i); err != nil {
+		return wrapValidationError(err)
+	}
+	return nil
+}
+
+func getAppConfig(server string) (*mastodon.AppConfig, error) {
+	if mastAppConfigBase != nil {
+		return &mastodon.AppConfig{
+			Server:       server,
+			ClientName:   mastAppConfigBase.ClientName,
+			Scopes:       mastAppConfigBase.Scopes,
+			Website:      mastAppConfigBase.Website,
+			RedirectURIs: mastAppConfigBase.RedirectURIs,
+		}, nil
+	}
+
+	localDomain := os.Getenv("LOCAL_DOMAIN")
+	redirectURI := "urn:ietf:wg:oauth:2.0:oob"
+	if localDomain != "" {
+		err := mainValidator.Var(localDomain, "hostname|hostname_port")
+		if err != nil {
+			return nil, err
+		}
+		u := &url.URL{
+			Host:   localDomain,
+			Scheme: "http",
+			Path:   "/",
+		}
+		u = u.JoinPath("app", "oauth")
+		redirectURI = u.String()
+	}
+
+	conf := &mastodon.AppConfig{
+		ClientName:   "Audon",
+		Scopes:       "read:accounts read:follows",
+		Website:      "https://github.com/nmkj-io/audon",
+		RedirectURIs: redirectURI,
+	}
+
+	mastAppConfigBase = conf
+
+	return &mastodon.AppConfig{
+		Server:       server,
+		ClientName:   conf.ClientName,
+		Scopes:       conf.Scopes,
+		Website:      conf.Website,
+		RedirectURIs: conf.RedirectURIs,
+	}, nil
+}
+
+func getSession(c echo.Context) (sess *sessions.Session, err error) {
+	sess, err = session.Get(SESSION_NAME, c)
+	if err != nil {
+		return nil, err
+	}
+
+	sess.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   0,
+		HttpOnly: true,
+		// SameSite: http.SameSiteStrictMode,
+		// Secure:   true,
+	}
+
+	return sess, nil
+}
+
+// retrieve user's session, returns invalid cookie error if failed
+func getSessionData(sess *sessions.Session) (data *SessionData, err error) {
+	val := sess.Values[SESSION_DATASTORE_NAME]
+	data, ok := val.(*SessionData)
+
+	if !ok {
+		return nil, err_invalid_cookie
+	}
+
+	return data, nil
+}
+
+// write user's session, returns error if failed
+func writeSessionData(c echo.Context, data *SessionData) error {
+	sess, err := getSession(c)
+	if err != nil {
+		return err
+	}
+
+	sess.Values[SESSION_DATASTORE_NAME] = data
+	sess.Save(c.Request(), c.Response())
+
+	return nil
+}
