@@ -45,33 +45,37 @@ func createRoomHandler(c echo.Context) (err error) {
 	}
 	room.Host = host
 
+	now := time.Now().UTC()
+	if now.Sub(room.ScheduledAt) > 0 {
+		room.ScheduledAt = now
+	}
+
 	// If CoHosts are already registered, retrieve their AudonID
 	for i, cohost := range room.CoHost {
 		cohostUser, err := findUserByRemote(c.Request().Context(), cohost.RemoteID, cohost.RemoteURL)
 		if err == nil {
-			room.CoHost[i].AudonID = cohostUser.AudonID
+			room.CoHost[i] = cohostUser
 		}
 	}
 
-	roomToken, err := getHostToken(room.RoomID, host.AudonID)
-	if err != nil {
-		c.Logger().Error(err)
+	room.CreatedAt = now
+
+	coll := mainDB.Collection(COLLECTION_ROOM)
+	if _, insertErr := coll.InsertOne(c.Request().Context(), room); insertErr != nil {
+		c.Logger().Error(insertErr)
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
-	return c.JSON(http.StatusCreated, roomToken)
+	return c.String(http.StatusCreated, room.RoomID)
 }
 
-func getHostToken(room, identity string) (string, error) {
+func getHostToken(room *Room) (string, error) {
 	at := auth.NewAccessToken(mainConfig.Livekit.APIKey, mainConfig.Livekit.APISecret)
 	grant := &auth.VideoGrant{
-		Room:       room,
-		RoomJoin:   true,
-		RoomRecord: true,
+		Room:     room.RoomID,
+		RoomJoin: true,
 	}
-	at.AddGrant(grant).
-		SetIdentity(identity).
-		SetValidFor(24 * time.Hour)
+	at.AddGrant(grant).SetIdentity(room.Host.AudonID).SetValidFor(10 * time.Minute)
 
 	return at.ToJWT()
 }

@@ -14,19 +14,20 @@ import (
 )
 
 func verifyTokenInSession(c echo.Context, sess *sessions.Session) (valid bool, err error) {
-	mastConf, err := getSessionData(sess)
+	data, err := getSessionData(sess)
 	if err != nil {
 		return false, err
 	}
 
-	if mastConf.MastodonConfig.AccessToken == "" {
+	if data.MastodonConfig.AccessToken == "" {
 		return false, nil
 	}
-	mastoClient := mastodon.NewClient(mastConf.MastodonConfig)
+	mastoClient := mastodon.NewClient(data.MastodonConfig)
 
-	_, err = mastoClient.VerifyAppCredentials(c.Request().Context())
+	acc, err := mastoClient.GetAccountCurrentUser(c.Request().Context())
+	user, dbErr := findUserByID(c.Request().Context(), data.AudonID)
 
-	if err != nil {
+	if err != nil || dbErr != nil || string(acc.ID) != user.RemoteID {
 		return false, err
 	}
 
@@ -129,7 +130,7 @@ func oauthHandler(c echo.Context) (err error) {
 		// 	return echo.NewHTTPError(http.StatusInternalServerError)
 		// }
 		entropy := ulid.Monotonic(rand.Reader, 0)
-		id, err := ulid.New(ulid.Timestamp(time.Now()), entropy)
+		id, err := ulid.New(ulid.Timestamp(time.Now().UTC()), entropy)
 		if err != nil {
 			c.Logger().Error(err)
 			return echo.NewHTTPError(http.StatusInternalServerError)
@@ -139,7 +140,7 @@ func oauthHandler(c echo.Context) (err error) {
 			AudonID:   data.AudonID,
 			RemoteID:  string(acc.ID),
 			RemoteURL: acc.URL,
-			CreatedAt: time.Now(),
+			CreatedAt: time.Now().UTC(),
 		}
 		if _, insertErr := coll.InsertOne(c.Request().Context(), newUser); insertErr != nil {
 			c.Logger().Error(insertErr)

@@ -12,12 +12,13 @@ type (
 		AppConfigBase
 		Livekit  *LivekitConfig
 		MongoURL *url.URL
+		Database *DBConfig
 	}
 
 	AppConfigBase struct {
-		Database      *DBConfig
 		SeesionSecret string `validate:"required,ascii"`
 		LocalDomain   string `validate:"required,hostname|hostname_port"`
+		Environment   string `validate:"printascii"`
 	}
 
 	LivekitConfig struct {
@@ -60,6 +61,7 @@ func loadConfig(envname string) (*AppConfig, error) {
 	basicConf := AppConfigBase{
 		SeesionSecret: os.Getenv("SESSION_SECRET"),
 		LocalDomain:   os.Getenv("LOCAL_DOMAIN"),
+		Environment:   envname,
 	}
 	if basicConf.SeesionSecret == "" {
 		basicConf.SeesionSecret = "dev"

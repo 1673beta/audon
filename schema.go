@@ -19,21 +19,20 @@ type (
 
 	AudonUser struct {
 		AudonID   string    `bson:"audon_id" json:"audon_id" validate:"alphanum"`
-		RemoteID  string    `bson:"remote_id" json:"remote_id" validate:"alphanum"`
+		RemoteID  string    `bson:"remote_id" json:"remote_id" validate:"printascii"`
 		RemoteURL string    `bson:"remote_url" json:"remote_url" validate:"url"`
 		CreatedAt time.Time `bson:"created_at" json:"created_at"`
 	}
 
 	Room struct {
-		RoomID        string       `bson:"room_id" json:"room_id" validate:"required,alphanum"`
-		Title         string       `bson:"title" json:"title" validate:"required,alphanumunicode"`
-		Description   string       `bson:"description" json:"description" validate:"alphanumunicode"`
+		RoomID        string       `bson:"room_id" json:"room_id" validate:"required,printascii"`
+		Title         string       `bson:"title" json:"title" validate:"required,printascii|multibyte"`
+		Description   string       `bson:"description" json:"description" validate:"printascii|multibyte"`
 		Host          *AudonUser   `bson:"host" json:"host"`
 		CoHost        []*AudonUser `bson:"cohost" json:"cohost"`
-		FollowingOnly bool         `bson:"following_only" json:"following_only" validate:"required"`
-		FollowerOnly  bool         `bson:"follower_only" json:"follower_only" validate:"required"`
-		InviteOnly    bool         `bson:"invite_only" json:"invite_only" validate:"required"`
-		InviteToken   string       `bson:"invite_token" json:"invite_token" validate:"alphanum"`
+		FollowingOnly bool         `bson:"following_only" json:"following_only"`
+		FollowerOnly  bool         `bson:"follower_only" json:"follower_only"`
+		MutualOnly    bool         `bson:"mutual_only" json:"mutual_only"`
 		ScheduledAt   time.Time    `bson:"scheduled_at" json:"scheduled_at"`
 		CreatedAt     time.Time    `bson:"created_at" json:"created_at"`
 	}
@@ -47,12 +46,15 @@ const (
 func createIndexes(ctx context.Context) error {
 	userColl := mainDB.Collection(COLLECTION_USER)
 	userIndexes, err := userColl.Indexes().ListSpecifications(ctx)
+	if err != nil {
+		return err
+	}
 
 	if len(userIndexes) < 3 {
 		_, err := userColl.Indexes().CreateMany(ctx, []mongo.IndexModel{
 			{
 				Keys:    bson.D{{Key: "audon_id", Value: 1}},
-				Options: options.Index().SetName("audon_id_1").SetUnique(true),
+				Options: options.Index().SetUnique(true),
 			},
 			{
 				Keys: bson.D{
@@ -66,7 +68,28 @@ func createIndexes(ctx context.Context) error {
 		}
 	}
 
-	return err
+	roomColl := mainDB.Collection(COLLECTION_ROOM)
+	roomIndexes, err := roomColl.Indexes().ListSpecifications(ctx)
+	if err != nil {
+		return err
+	}
+
+	if len(roomIndexes) < 3 {
+		_, err := roomColl.Indexes().CreateMany(ctx, []mongo.IndexModel{
+			{
+				Keys:    bson.D{{Key: "room_id", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+			{
+				Keys: bson.D{{Key: "host.audon_id", Value: 1}},
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func findUserByRemote(ctx context.Context, remoteID, remoteURL string) (*AudonUser, error) {

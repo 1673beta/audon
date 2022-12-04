@@ -15,6 +15,7 @@ export default {
   data() {
     return {
       server: "",
+      serverErr: "",
     };
   },
   validations() {
@@ -31,7 +32,11 @@ export default {
   computed: {
     serverErrors() {
       const errors = this.v$.server.$errors;
-      return _.map(errors, (e) => e.$message);
+      const messages = _.map(errors, (e) => e.$message);
+      if (this.serverErr !== "") {
+        messages.push(this.serverErr);
+      }
+      return messages;
     },
   },
   methods: {
@@ -40,12 +45,25 @@ export default {
       if (!isFormCorrect) {
         return;
       }
-      const response = await axios.postForm("/api/login", { server: this.server });
-      if (response.status === 201) {
-        // this.$router.push(response.data)
-        location.assign(response.data)
+      try {
+        const response = await axios.postForm("/api/login", {
+          server: this.server,
+        });
+        if (response.status === 201) {
+          // this.$router.push(response.data)
+          location.assign(response.data);
+          this.serverErr = "";
+        }
+      } catch (error) {
+        if (error.response && error.response.status === 404) {
+          this.serverErr = "サーバーが見つかりません"
+        }
       }
     },
+    onInput () {
+      this.v$.server.$touch();
+      this.serverErr = "";
+    }
   },
 };
 </script>
@@ -60,8 +78,7 @@ export default {
       placeholder="mastodon.example"
       class="mb-2"
       :error-messages="serverErrors"
-      @input="v$.server.$touch"
-      @blur="v$.server.$touch"
+      @update:model-value="onInput"
       clearable
     />
     <v-btn block @click="onSubmit" :disabled="!v$.$dirty || v$.$error"

@@ -56,15 +56,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	dbContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	backContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	dbClient, err := mongo.Connect(dbContext, options.Client().ApplyURI(mainConfig.MongoURL.String()))
+
+	// Setup database client
+	dbClient, err := mongo.Connect(backContext, options.Client().ApplyURI(mainConfig.MongoURL.String()))
 	if err != nil {
 		log.Fatalln(err)
 		os.Exit(2)
 	}
 	mainDB = dbClient.Database(mainConfig.Database.Name)
-	err = createIndexes(dbContext)
+	err = createIndexes(backContext)
 	if err != nil {
 		log.Fatalln(err)
 		os.Exit(3)
@@ -78,7 +80,23 @@ func main() {
 	}
 	e.Renderer = t
 	e.Validator = &CustomValidator{validator: mainValidator}
-	e.Use(session.Middleware(sessions.NewCookieStore([]byte(mainConfig.SeesionSecret))))
+	cookieStore := sessions.NewCookieStore([]byte(mainConfig.SeesionSecret))
+	cookieStore.Options = &sessions.Options{
+		Path:     "/",
+		Domain:   mainConfig.LocalDomain,
+		MaxAge:   86400 * 30,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Secure:   true,
+	}
+	if mainConfig.Environment == "development" {
+		cookieStore.Options.Domain = ""
+		cookieStore.Options.SameSite = http.SameSiteNoneMode
+		cookieStore.Options.Secure = false
+		cookieStore.Options.MaxAge = 3600 * 24
+		cookieStore.Options.HttpOnly = false
+	}
+	e.Use(session.Middleware(cookieStore))
 	// e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
 	// 	CookiePath:  "/",
 	// 	TokenLookup: "header:X-XSRF-TOKEN",
@@ -162,14 +180,6 @@ func getSession(c echo.Context) (sess *sessions.Session, err error) {
 	sess, err = session.Get(SESSION_NAME, c)
 	if err != nil {
 		return nil, err
-	}
-
-	sess.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   0,
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-		Secure:   true,
 	}
 
 	return sess, nil
