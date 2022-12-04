@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"net/url"
 	"os"
-	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -17,21 +15,21 @@ type (
 	}
 
 	AppConfigBase struct {
-		DBName        string `validate:"required,alphabum"`
+		Database      *DBConfig
 		SeesionSecret string `validate:"required,ascii"`
-		LocalDomain   string `validate:"required,hostname|hostname_port`
+		LocalDomain   string `validate:"required,hostname|hostname_port"`
 	}
 
 	LivekitConfig struct {
-		LivekitAPIKey    string `validate:"required,alphanum"`
-		LivekitAPISecret string `validate:"required,alphanum"`
+		APIKey    string `validate:"required,ascii"`
+		APISecret string `validate:"required,ascii"`
+		Host      string `validate:"required,hostname_port"`
 	}
 
 	DBConfig struct {
 		User     string `validate:"required,alphanum"`
 		Password string `validate:"required,ascii"`
-		Host     string `validare:"required,hostname"`
-		Port     int    `validate:"required,gt=20000"`
+		Host     string `validare:"required,hostname_port"`
 		Name     string `validate:"required,alphanum"`
 	}
 )
@@ -50,15 +48,16 @@ func loadConfig(envname string) (*AppConfig, error) {
 	if err := godotenv.Load(".env." + envname); err != nil {
 		return nil, err
 	}
-	if err := godotenv.Load(".env"); err != nil {
-		return nil, err
+	if _, err := os.Stat(".env"); err == nil {
+		if err := godotenv.Load(".env"); err != nil {
+			return nil, err
+		}
 	}
 
 	var appConf AppConfig
 
 	// Setup base config
 	basicConf := AppConfigBase{
-		DBName:        os.Getenv("DB_NAME"),
 		SeesionSecret: os.Getenv("SESSION_SECRET"),
 		LocalDomain:   os.Getenv("LOCAL_DOMAIN"),
 	}
@@ -71,30 +70,28 @@ func loadConfig(envname string) (*AppConfig, error) {
 	appConf.AppConfigBase = basicConf
 
 	// Setup MongoDB config
-	dbport, err := strconv.Atoi(os.Getenv("DB_PORT"))
-	if err != nil {
-		return nil, err
-	}
 	dbconf := &DBConfig{
 		User:     os.Getenv("DB_USER"),
 		Password: os.Getenv("DB_PASS"),
 		Host:     os.Getenv("DB_HOST"),
-		Port:     dbport,
+		Name:     os.Getenv("DB_NAME"),
 	}
 	if err := mainValidator.Struct(dbconf); err != nil {
 		return nil, err
 	}
+	appConf.Database = dbconf
 	mongoURL := &url.URL{
 		Scheme: "mongodb",
 		User:   url.UserPassword(dbconf.User, dbconf.Password),
-		Host:   fmt.Sprintf("%s:%d", dbconf.Host, dbconf.Port),
+		Host:   dbconf.Host,
 	}
 	appConf.MongoURL = mongoURL
 
 	// Setup LiveKit config
 	lkConf := &LivekitConfig{
-		LivekitAPIKey:    os.Getenv("LIVEKIT_API_KEY"),
-		LivekitAPISecret: os.Getenv("LIVEKIT_API_SECRET"),
+		APIKey:    os.Getenv("LIVEKIT_API_KEY"),
+		APISecret: os.Getenv("LIVEKIT_API_SECRET"),
+		Host:      os.Getenv("LIVEKIT_HOST"),
 	}
 	if err := mainValidator.Struct(lkConf); err != nil {
 		return nil, err

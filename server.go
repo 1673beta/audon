@@ -56,14 +56,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	dbContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	dbContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	dbClient, err := mongo.Connect(dbContext, options.Client().ApplyURI(mainConfig.MongoURL.String()))
 	if err != nil {
 		log.Fatalln(err)
 		os.Exit(2)
 	}
-	mainDB = dbClient.Database(mainConfig.DBName)
+	mainDB = dbClient.Database(mainConfig.Database.Name)
 	err = createIndexes(dbContext)
 	if err != nil {
 		log.Fatalln(err)
@@ -81,13 +81,14 @@ func main() {
 	e.Use(session.Middleware(sessions.NewCookieStore([]byte(mainConfig.SeesionSecret))))
 	// e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
 	// 	CookiePath:  "/",
-	// 	TokenLookup: "header:X-CSRF-Token,form:csrf",
+	// 	TokenLookup: "header:X-XSRF-TOKEN",
 	// }))
 
-	e.GET("/api/v1/verify", verifyHandler)
-	e.POST("/app/login", loginHandler)
-	e.GET("/app/oauth", oauthHandler)
-	e.Static("/assets", "audon-fe/dist/assets")
+	e.GET("/api/verify", verifyHandler)
+	e.POST("/api/room", createRoomHandler)
+	e.POST("/api/login", loginHandler)
+	e.GET("/api/oauth", oauthHandler)
+	e.Static("/", "audon-fe/dist/assets")
 
 	e.Logger.Debug(e.Start(":1323"))
 }
@@ -133,10 +134,10 @@ func getAppConfig(server string) (*mastodon.AppConfig, error) {
 	redirectURI := "urn:ietf:wg:oauth:2.0:oob"
 	u := &url.URL{
 		Host:   mainConfig.LocalDomain,
-		Scheme: "http",
+		Scheme: "https",
 		Path:   "/",
 	}
-	u = u.JoinPath("app", "oauth")
+	u = u.JoinPath("api", "oauth")
 	redirectURI = u.String()
 
 	conf := &mastodon.AppConfig{
@@ -167,8 +168,8 @@ func getSession(c echo.Context) (sess *sessions.Session, err error) {
 		Path:     "/",
 		MaxAge:   0,
 		HttpOnly: true,
-		// SameSite: http.SameSiteStrictMode,
-		// Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Secure:   true,
 	}
 
 	return sess, nil
@@ -194,7 +195,6 @@ func writeSessionData(c echo.Context, data *SessionData) error {
 	}
 
 	sess.Values[SESSION_DATASTORE_NAME] = data
-	sess.Save(c.Request(), c.Response())
 
-	return nil
+	return sess.Save(c.Request(), c.Response())
 }

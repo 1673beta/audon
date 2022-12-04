@@ -18,9 +18,9 @@ type (
 	}
 
 	AudonUser struct {
-		AudonID   string    `bson:"audon_id" json:"audon_id"`
-		RemoteID  string    `bson:"remote_id" json:"remote_id"`
-		RemoteURL string    `bson:"remote_url" json:"remote_url"`
+		AudonID   string    `bson:"audon_id" json:"audon_id" validate:"alphanum"`
+		RemoteID  string    `bson:"remote_id" json:"remote_id" validate:"alphanum"`
+		RemoteURL string    `bson:"remote_url" json:"remote_url" validate:"url"`
 		CreatedAt time.Time `bson:"created_at" json:"created_at"`
 	}
 
@@ -33,7 +33,9 @@ type (
 		FollowingOnly bool         `bson:"following_only" json:"following_only" validate:"required"`
 		FollowerOnly  bool         `bson:"follower_only" json:"follower_only" validate:"required"`
 		InviteOnly    bool         `bson:"invite_only" json:"invite_only" validate:"required"`
-		InviteToken   string       `bson:"invite_token" json:"invite_token"`
+		InviteToken   string       `bson:"invite_token" json:"invite_token" validate:"alphanum"`
+		ScheduledAt   time.Time    `bson:"scheduled_at" json:"scheduled_at"`
+		CreatedAt     time.Time    `bson:"created_at" json:"created_at"`
 	}
 )
 
@@ -79,7 +81,7 @@ func findUserByRemote(ctx context.Context, remoteID, remoteURL string) (*AudonUs
 func findUserByID(ctx context.Context, audonID string) (*AudonUser, error) {
 	var result AudonUser
 	coll := mainDB.Collection(COLLECTION_USER)
-	if err := coll.FindOne(ctx, bson.D{{"audon_id", audonID}}).Decode(&result); err != nil {
+	if err := coll.FindOne(ctx, bson.D{{Key: "audon_id", Value: audonID}}).Decode(&result); err != nil {
 		return nil, err
 	}
 	return &result, nil

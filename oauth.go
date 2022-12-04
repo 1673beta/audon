@@ -1,14 +1,15 @@
 package main
 
 import (
+	"crypto/rand"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/gorilla/sessions"
-	"github.com/jaevor/go-nanoid"
 	"github.com/labstack/echo/v4"
 	mastodon "github.com/mattn/go-mastodon"
+	"github.com/oklog/ulid/v2"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -36,7 +37,7 @@ func verifyTokenInSession(c echo.Context, sess *sessions.Session) (valid bool, e
 func loginHandler(c echo.Context) (err error) {
 	serverHost := c.FormValue("server")
 
-	if err = mainValidator.Var(serverHost, "required,hostname|hostname_port"); err != nil {
+	if err = mainValidator.Var(serverHost, "required,hostname,fqdn"); err != nil {
 		return wrapValidationError(err)
 	}
 
@@ -122,12 +123,18 @@ func oauthHandler(c echo.Context) (err error) {
 	coll := mainDB.Collection(COLLECTION_USER)
 	if result, dbErr := findUserByRemote(c.Request().Context(), string(acc.ID), acc.URL); dbErr == mongo.ErrNoDocuments {
 		// Create user if not yet registered
-		canonic, err := nanoid.Standard(21) // Should AudonID be sortable?
+		// canonic, err := nanoid.Standard(21) // Should AudonID be sortable?
+		// if err != nil {
+		// 	c.Logger().Error(err)
+		// 	return echo.NewHTTPError(http.StatusInternalServerError)
+		// }
+		entropy := ulid.Monotonic(rand.Reader, 0)
+		id, err := ulid.New(ulid.Timestamp(time.Now()), entropy)
 		if err != nil {
 			c.Logger().Error(err)
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
-		data.AudonID = canonic()
+		data.AudonID = id.String()
 		newUser := AudonUser{
 			AudonID:   data.AudonID,
 			RemoteID:  string(acc.ID),
@@ -152,6 +159,6 @@ func oauthHandler(c echo.Context) (err error) {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
-	// return c.Redirect(http.StatusFound, "/")
-	return c.Redirect(http.StatusFound, "http://localhost:5173")
+	return c.Redirect(http.StatusFound, "/")
+	// return c.Redirect(http.StatusFound, "http://localhost:5173")
 }
