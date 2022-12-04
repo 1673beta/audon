@@ -6,15 +6,14 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/gorilla/sessions"
 	"github.com/labstack/echo/v4"
 	mastodon "github.com/mattn/go-mastodon"
 	"github.com/oklog/ulid/v2"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func verifyTokenInSession(c echo.Context, sess *sessions.Session) (valid bool, err error) {
-	data, err := getSessionData(sess)
+func verifyTokenInSession(c echo.Context) (valid bool, err error) {
+	data, err := getSessionData(c)
 	if err != nil {
 		return false, err
 	}
@@ -34,7 +33,7 @@ func verifyTokenInSession(c echo.Context, sess *sessions.Session) (valid bool, e
 	return true, nil
 }
 
-// handler for POST to /login
+// handler for POST to /app/login
 func loginHandler(c echo.Context) (err error) {
 	serverHost := c.FormValue("server")
 
@@ -42,13 +41,7 @@ func loginHandler(c echo.Context) (err error) {
 		return wrapValidationError(err)
 	}
 
-	sess, err := getSession(c)
-	if err != nil {
-		c.Logger().Error(err)
-		return ErrSessionNotAvailable
-	}
-
-	valid, _ := verifyTokenInSession(c, sess)
+	valid, _ := verifyTokenInSession(c)
 	if !valid {
 		serverURL := &url.URL{
 			Host:   serverHost,
@@ -83,7 +76,7 @@ func loginHandler(c echo.Context) (err error) {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// handler for GET to /oauth?code=****
+// handler for GET to /app/oauth?code=****
 func oauthHandler(c echo.Context) (err error) {
 	authCode := c.QueryParam("code")
 	if authCode == "" {
@@ -93,15 +86,9 @@ func oauthHandler(c echo.Context) (err error) {
 		return echo.NewHTTPError(http.StatusBadRequest, "authentication code needed")
 	}
 
-	sess, err := getSession(c)
+	data, err := getSessionData(c)
 	if err != nil {
-		c.Logger().Error(err)
-		return ErrSessionNotAvailable
-	}
-
-	data, err := getSessionData(sess)
-	if err != nil {
-		return ErrInvalidCookie
+		return err
 	}
 	appConf, err := getAppConfig(data.MastodonConfig.Server)
 	if err != nil {
@@ -123,12 +110,6 @@ func oauthHandler(c echo.Context) (err error) {
 
 	coll := mainDB.Collection(COLLECTION_USER)
 	if result, dbErr := findUserByRemote(c.Request().Context(), string(acc.ID), acc.URL); dbErr == mongo.ErrNoDocuments {
-		// Create user if not yet registered
-		// canonic, err := nanoid.Standard(21) // Should AudonID be sortable?
-		// if err != nil {
-		// 	c.Logger().Error(err)
-		// 	return echo.NewHTTPError(http.StatusInternalServerError)
-		// }
 		entropy := ulid.Monotonic(rand.Reader, 0)
 		id, err := ulid.New(ulid.Timestamp(time.Now().UTC()), entropy)
 		if err != nil {
@@ -162,4 +143,21 @@ func oauthHandler(c echo.Context) (err error) {
 
 	return c.Redirect(http.StatusFound, "/")
 	// return c.Redirect(http.StatusFound, "http://localhost:5173")
+}
+
+func authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		data, err := getSessionData(c)
+		if err != nil {
+			return err
+		}
+
+		if data.AudonID != "" {
+			if _, err := findUserByID(c.Request().Context(), data.AudonID); err == nil {
+				return next(c)
+			}
+		}
+
+		return echo.NewHTTPError(http.StatusUnauthorized, "login_required")
+	}
 }

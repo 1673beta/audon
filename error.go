@@ -9,7 +9,7 @@ import (
 
 var (
 	ErrInvalidRequestFormat = echo.NewHTTPError(http.StatusBadRequest, "invalid_request_format")
-	ErrInvalidCookie        = echo.NewHTTPError(http.StatusBadRequest, err_invalid_cookie.Error())
+	ErrInvalidSession       = echo.NewHTTPError(http.StatusBadRequest)
 	ErrSessionNotAvailable  = echo.NewHTTPError(http.StatusInternalServerError, "session_not_available")
 )
 

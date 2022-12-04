@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// handler for POST to /api/room
 func createRoomHandler(c echo.Context) (err error) {
 	room := new(Room)
 	if err = c.Bind(room); err != nil {
@@ -25,14 +26,9 @@ func createRoomHandler(c echo.Context) (err error) {
 	}
 	room.RoomID = canonic()
 
-	sess, err := getSession(c)
+	sessData, err := getSessionData(c)
 	if err != nil {
-		c.Logger().Error(err)
-		return ErrSessionNotAvailable
-	}
-	sessData, err := getSessionData(sess)
-	if err != nil {
-		return ErrInvalidCookie
+		return err
 	}
 
 	var host *AudonUser
@@ -50,7 +46,7 @@ func createRoomHandler(c echo.Context) (err error) {
 		room.ScheduledAt = now
 	}
 
-	// If CoHosts are already registered, retrieve their AudonID
+	// If CoHosts are already registered, retrieve their data from DB
 	for i, cohost := range room.CoHost {
 		cohostUser, err := findUserByRemote(c.Request().Context(), cohost.RemoteID, cohost.RemoteURL)
 		if err == nil {
@@ -59,7 +55,6 @@ func createRoomHandler(c echo.Context) (err error) {
 	}
 
 	room.CreatedAt = now
-
 	coll := mainDB.Collection(COLLECTION_ROOM)
 	if _, insertErr := coll.InsertOne(c.Request().Context(), room); insertErr != nil {
 		c.Logger().Error(insertErr)

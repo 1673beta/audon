@@ -97,34 +97,17 @@ func main() {
 		cookieStore.Options.HttpOnly = false
 	}
 	e.Use(session.Middleware(cookieStore))
-	// e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
-	// 	CookiePath:  "/",
-	// 	TokenLookup: "header:X-XSRF-TOKEN",
-	// }))
 
-	e.GET("/api/verify", verifyHandler)
-	e.POST("/api/room", createRoomHandler)
-	e.POST("/api/login", loginHandler)
-	e.GET("/api/oauth", oauthHandler)
 	e.Static("/", "audon-fe/dist/assets")
 
+	e.POST("/app/login", loginHandler)
+	e.GET("/app/oauth", oauthHandler)
+	e.GET("/app/verify", verifyHandler)
+
+	api := e.Group("/api", authMiddleware)
+	api.POST("/room", createRoomHandler)
+
 	e.Logger.Debug(e.Start(":1323"))
-}
-
-// handler for GET to /api/v1/verify
-func verifyHandler(c echo.Context) (err error) {
-	sess, err := getSession(c)
-	if err != nil {
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError)
-	}
-
-	valid, _ := verifyTokenInSession(c, sess)
-	if !valid {
-		return c.NoContent(http.StatusUnauthorized)
-	}
-
-	return c.NoContent(http.StatusOK)
 }
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
@@ -155,7 +138,7 @@ func getAppConfig(server string) (*mastodon.AppConfig, error) {
 		Scheme: "https",
 		Path:   "/",
 	}
-	u = u.JoinPath("api", "oauth")
+	u = u.JoinPath("app", "oauth")
 	redirectURI = u.String()
 
 	conf := &mastodon.AppConfig{
@@ -176,8 +159,8 @@ func getAppConfig(server string) (*mastodon.AppConfig, error) {
 	}, nil
 }
 
-func getSession(c echo.Context) (sess *sessions.Session, err error) {
-	sess, err = session.Get(SESSION_NAME, c)
+func getSession(c echo.Context, sessionID string) (sess *sessions.Session, err error) {
+	sess, err = session.Get(sessionID, c)
 	if err != nil {
 		return nil, err
 	}
@@ -186,12 +169,18 @@ func getSession(c echo.Context) (sess *sessions.Session, err error) {
 }
 
 // retrieve user's session, returns invalid cookie error if failed
-func getSessionData(sess *sessions.Session) (data *SessionData, err error) {
+func getSessionData(c echo.Context) (data *SessionData, err error) {
+	sess, err := getSession(c, SESSION_NAME)
+	if err != nil {
+		c.Logger().Error(err)
+		return nil, ErrSessionNotAvailable
+	}
+
 	val := sess.Values[SESSION_DATASTORE_NAME]
 	data, ok := val.(*SessionData)
 
 	if !ok {
-		return nil, err_invalid_cookie
+		return nil, ErrInvalidSession
 	}
 
 	return data, nil
@@ -199,7 +188,7 @@ func getSessionData(sess *sessions.Session) (data *SessionData, err error) {
 
 // write user's session, returns error if failed
 func writeSessionData(c echo.Context, data *SessionData) error {
-	sess, err := getSession(c)
+	sess, err := getSession(c, SESSION_NAME)
 	if err != nil {
 		return err
 	}
@@ -207,4 +196,14 @@ func writeSessionData(c echo.Context, data *SessionData) error {
 	sess.Values[SESSION_DATASTORE_NAME] = data
 
 	return sess.Save(c.Request(), c.Response())
+}
+
+// handler for GET to /app/verify
+func verifyHandler(c echo.Context) (err error) {
+	valid, _ := verifyTokenInSession(c)
+	if !valid {
+		return c.NoContent(http.StatusUnauthorized)
+	}
+
+	return c.NoContent(http.StatusOK)
 }

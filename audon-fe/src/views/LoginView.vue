@@ -46,7 +46,7 @@ export default {
         return;
       }
       try {
-        const response = await axios.postForm("/api/login", {
+        const response = await axios.postForm("/app/login", {
           server: this.server,
         });
         if (response.status === 201) {
