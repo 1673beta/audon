@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
+	lksdk "github.com/livekit/server-sdk-go"
 	"github.com/mattn/go-mastodon"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -33,10 +34,11 @@ type (
 )
 
 var (
-	mastAppConfigBase *mastodon.AppConfig = nil
-	mainDB            *mongo.Database     = nil
-	mainValidator                         = validator.New()
-	mainConfig        *AppConfig
+	mastAppConfigBase   *mastodon.AppConfig = nil
+	mainDB              *mongo.Database     = nil
+	mainValidator                           = validator.New()
+	mainConfig          *AppConfig
+	lkRoomServiceClient *lksdk.RoomServiceClient
 )
 
 func init() {
@@ -53,6 +55,9 @@ func main() {
 		log.Fatalln(err)
 		os.Exit(1)
 	}
+
+	// Setup Livekit RoomService Client
+	lkRoomServiceClient = lksdk.NewRoomServiceClient(mainConfig.Livekit.URL.String(), mainConfig.Livekit.APIKey, mainConfig.Livekit.APISecret)
 
 	backContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

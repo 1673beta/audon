@@ -9,6 +9,7 @@ import (
 	"github.com/jaevor/go-nanoid"
 	"github.com/labstack/echo/v4"
 	"github.com/livekit/protocol/auth"
+	"github.com/livekit/protocol/livekit"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -55,7 +56,7 @@ func createRoomHandler(c echo.Context) error {
 	return c.String(http.StatusCreated, room.RoomID)
 }
 
-func joinRoomHandler(c echo.Context) error {
+func joinRoomHandler(c echo.Context) (err error) {
 	roomID := c.Param("id")
 	if err := mainValidator.Var(&roomID, "required,printascii"); err != nil {
 		return wrapValidationError(err)
@@ -80,17 +81,6 @@ func joinRoomHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusGone, "already_ended")
 	}
 
-	// when host or cohost joins
-	if room.IsHost(user) || room.IsCoHost(user) {
-		token, err := getRoomToken(room, user.AudonID, true) // host and cohost can talk from the beginning
-		if err != nil {
-			c.Logger().Error(err)
-			return echo.NewHTTPError(http.StatusInternalServerError)
-		}
-
-		return c.JSON(http.StatusOK, token)
-	}
-
 	// return 403 if one has been kicked
 	for _, kicked := range room.Kicked {
 		if kicked.Equal(user) {
@@ -98,12 +88,13 @@ func joinRoomHandler(c echo.Context) error {
 		}
 	}
 
-	// when one is neither host nor cohost
-	token, err := getRoomToken(room, user.AudonID, false) // listener needs a permission to talk
+	token, err := getRoomToken(room, user.AudonID, room.IsHost(user) || room.IsCoHost(user)) // host and cohost can talk from the beginning
 	if err != nil {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
+
+	// Create room in LiveKit
 
 	return c.JSON(http.StatusOK, token)
 }
@@ -176,6 +167,16 @@ func endRoom(ctx context.Context, room *Room) error {
 		bson.D{
 			{Key: "$set", Value: bson.D{{Key: "ended_at", Value: now}}},
 		}); err != nil {
+		return err
+	}
+
+	rooms, err := lkRoomServiceClient.ListRooms(ctx, &livekit.ListRoomsRequest{Names: []string{room.RoomID}})
+	if err == nil && len(rooms.Rooms) != 0 {
+		_, err := lkRoomServiceClient.DeleteRoom(ctx, &livekit.DeleteRoomRequest{Room: room.RoomID})
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
 

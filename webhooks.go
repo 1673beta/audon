@@ -20,7 +20,7 @@ func livekitWebhookHandler(c echo.Context) error {
 		roomID := event.GetRoom().GetName()
 		if err := mainValidator.Var(&roomID, "required,printascii"); err == nil {
 			room, err := findRoomByID(c.Request().Context(), roomID)
-			if err == nil {
+			if err == nil && room.EndedAt.IsZero() {
 				if err := endRoom(c.Request().Context(), room); err != nil {
 					c.Logger().Error(err)
 					return echo.NewHTTPError(http.StatusInternalServerError)

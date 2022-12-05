@@ -25,6 +25,7 @@ type (
 		APIKey    string `validate:"required,ascii"`
 		APISecret string `validate:"required,ascii"`
 		Host      string `validate:"required,hostname_port"`
+		URL       *url.URL
 	}
 
 	DBConfig struct {
@@ -97,6 +98,10 @@ func loadConfig(envname string) (*AppConfig, error) {
 	}
 	if err := mainValidator.Struct(lkConf); err != nil {
 		return nil, err
+	}
+	lkConf.URL = &url.URL{
+		Scheme: "ws",
+		Host:   lkConf.Host,
 	}
 	appConf.Livekit = lkConf
 
