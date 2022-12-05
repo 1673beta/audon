@@ -14,10 +14,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type TokenMessage struct {
-	RtcURL string `json:"rtc"`
-	Token  string `json:"token"`
-}
+type (
+	TokenResponse struct {
+		RtcURL string `json:"rtc"`
+		Token  string `json:"token"`
+	}
+
+	PermissionRequest struct {
+	}
+)
 
 // handler for POST to /api/room
 func createRoomHandler(c echo.Context) error {
@@ -99,7 +104,7 @@ func joinRoomHandler(c echo.Context) (err error) {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
-	resp := &TokenMessage{
+	resp := &TokenResponse{
 		RtcURL: mainConfig.Livekit.URL.String(),
 		Token:  token,
 	}
@@ -144,6 +149,10 @@ func closeRoomHandler(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusOK)
+}
+
+func updatePermissionHandler(c echo.Context) error {
+
 }
 
 func getRoomToken(room *Room, identity string, canTalk bool) (string, error) {
