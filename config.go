@@ -13,6 +13,7 @@ type (
 		Livekit  *LivekitConfig
 		MongoURL *url.URL
 		Database *DBConfig
+		Redis    *RedisConfig
 	}
 
 	AppConfigBase struct {
@@ -22,10 +23,11 @@ type (
 	}
 
 	LivekitConfig struct {
-		APIKey    string `validate:"required,ascii"`
-		APISecret string `validate:"required,ascii"`
-		Host      string `validate:"required,hostname_port"`
-		URL       *url.URL
+		APIKey      string `validate:"required,ascii"`
+		APISecret   string `validate:"required,ascii"`
+		Host        string `validate:"required,hostname|hostname_port"`
+		LocalDomain string `validate:"required,hostname|hostname_port"`
+		URL         *url.URL
 	}
 
 	DBConfig struct {
@@ -34,10 +36,16 @@ type (
 		Host     string `validare:"required,hostname_port"`
 		Name     string `validate:"required,alphanum"`
 	}
+
+	RedisConfig struct {
+		Host     string `validate:"required,hostname_port"`
+		User     string `validate:"printascii"`
+		Password string `validate:"printascii"`
+	}
 )
 
 const (
-	SESSION_NAME           = "session"
+	SESSION_NAME           = "session-id"
 	SESSION_DATASTORE_NAME = "data"
 )
 
@@ -47,7 +55,7 @@ func loadConfig(envname string) (*AppConfig, error) {
 	}
 
 	// Set values in .env files to environment variables
-	if err := godotenv.Load(".env." + envname); err != nil {
+	if err := godotenv.Load(".env." + envname + ".local"); err != nil {
 		return nil, err
 	}
 	if _, err := os.Stat(".env"); err == nil {
@@ -90,19 +98,32 @@ func loadConfig(envname string) (*AppConfig, error) {
 	}
 	appConf.MongoURL = mongoURL
 
+	// Setup Redis config
+	redisConf := &RedisConfig{
+		Host:     os.Getenv("REDIS_HOST"),
+		User:     os.Getenv("REDIS_USER"),
+		Password: os.Getenv("REDIS_PASS"),
+	}
+	if err := mainValidator.Struct(redisConf); err != nil {
+		return nil, err
+	}
+	appConf.Redis = redisConf
+
 	// Setup LiveKit config
 	lkConf := &LivekitConfig{
-		APIKey:    os.Getenv("LIVEKIT_API_KEY"),
-		APISecret: os.Getenv("LIVEKIT_API_SECRET"),
-		Host:      os.Getenv("LIVEKIT_HOST"),
+		APIKey:      os.Getenv("LIVEKIT_API_KEY"),
+		APISecret:   os.Getenv("LIVEKIT_API_SECRET"),
+		Host:        os.Getenv("LIVEKIT_HOST"),
+		LocalDomain: os.Getenv("LIVEKIT_LOCAL_DOMAIN"),
 	}
 	if err := mainValidator.Struct(lkConf); err != nil {
 		return nil, err
 	}
-	lkConf.URL = &url.URL{
-		Scheme: "ws",
-		Host:   lkConf.Host,
+	lkURL := &url.URL{
+		Scheme: "https",
+		Host:   lkConf.LocalDomain,
 	}
+	lkConf.URL = lkURL
 	appConf.Livekit = lkConf
 
 	return &appConf, nil

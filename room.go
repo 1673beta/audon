@@ -14,6 +14,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+type TokenMessage struct {
+	RtcURL string `json:"rtc"`
+	Token  string `json:"token"`
+}
+
 // handler for POST to /api/room
 func createRoomHandler(c echo.Context) error {
 	room := new(Room)
@@ -94,9 +99,21 @@ func joinRoomHandler(c echo.Context) (err error) {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
-	// Create room in LiveKit
+	resp := &TokenMessage{
+		RtcURL: mainConfig.Livekit.URL.String(),
+		Token:  token,
+	}
 
-	return c.JSON(http.StatusOK, token)
+	// Create room in LiveKit
+	_, err = lkRoomServiceClient.CreateRoom(c.Request().Context(), &livekit.CreateRoomRequest{
+		Name: room.RoomID,
+	})
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusConflict)
+	}
+
+	return c.JSON(http.StatusOK, resp)
 }
 
 // intended to be called by room's host
@@ -134,6 +151,7 @@ func getRoomToken(room *Room, identity string, canTalk bool) (string, error) {
 	grant := &auth.VideoGrant{
 		Room:       room.RoomID,
 		RoomJoin:   true,
+		RoomCreate: false,
 		CanPublish: &canTalk,
 	}
 	at.AddGrant(grant).SetIdentity(identity).SetValidFor(10 * time.Minute)

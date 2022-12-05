@@ -12,11 +12,13 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/go-redis/redis/v9"
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	lksdk "github.com/livekit/server-sdk-go"
 	"github.com/mattn/go-mastodon"
+	"github.com/rbcervilla/redisstore/v9"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -53,11 +55,14 @@ func main() {
 	mainConfig, err = loadConfig(os.Getenv("AUDON_ENV"))
 	if err != nil {
 		log.Fatalln(err)
-		os.Exit(1)
 	}
 
 	// Setup Livekit RoomService Client
-	lkRoomServiceClient = lksdk.NewRoomServiceClient(mainConfig.Livekit.URL.String(), mainConfig.Livekit.APIKey, mainConfig.Livekit.APISecret)
+	lkURL := &url.URL{
+		Scheme: "https",
+		Host:   mainConfig.Livekit.Host,
+	}
+	lkRoomServiceClient = lksdk.NewRoomServiceClient(lkURL.String(), mainConfig.Livekit.APIKey, mainConfig.Livekit.APISecret)
 
 	backContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -66,14 +71,20 @@ func main() {
 	dbClient, err := mongo.Connect(backContext, options.Client().ApplyURI(mainConfig.MongoURL.String()))
 	if err != nil {
 		log.Fatalln(err)
-		os.Exit(2)
 	}
 	mainDB = dbClient.Database(mainConfig.Database.Name)
 	err = createIndexes(backContext)
 	if err != nil {
 		log.Fatalln(err)
-		os.Exit(3)
 	}
+
+	// Setup redis client
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     mainConfig.Redis.Host,
+		Username: mainConfig.Redis.User,
+		Password: mainConfig.Redis.Password,
+		DB:       0,
+	})
 
 	// Setup echo server
 	e := echo.New()
@@ -86,8 +97,12 @@ func main() {
 	e.Validator = &CustomValidator{validator: mainValidator}
 
 	// Setup session middleware (currently Audon stores all client data in cookie)
-	cookieStore := sessions.NewCookieStore([]byte(mainConfig.SeesionSecret))
-	cookieStore.Options = &sessions.Options{
+	redisStore, err := redisstore.NewRedisStore(backContext, redisClient)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	redisStore.KeyPrefix("session_")
+	sessionOptions := sessions.Options{
 		Path:     "/",
 		Domain:   mainConfig.LocalDomain,
 		MaxAge:   86400 * 30,
@@ -96,15 +111,14 @@ func main() {
 		Secure:   true,
 	}
 	if mainConfig.Environment == "development" {
-		cookieStore.Options.Domain = ""
-		cookieStore.Options.SameSite = http.SameSiteNoneMode
-		cookieStore.Options.Secure = false
-		cookieStore.Options.MaxAge = 3600 * 24
-		cookieStore.Options.HttpOnly = false
+		sessionOptions.Domain = ""
+		sessionOptions.SameSite = http.SameSiteNoneMode
+		sessionOptions.Secure = false
+		sessionOptions.MaxAge = 3600 * 24
+		sessionOptions.HttpOnly = false
 	}
-	e.Use(session.Middleware(cookieStore))
-
-	e.Static("/", "audon-fe/dist/assets")
+	redisStore.Options(sessionOptions)
+	e.Use(session.Middleware(redisStore))
 
 	e.POST("/app/login", loginHandler)
 	e.GET("/app/oauth", oauthHandler)
@@ -114,8 +128,11 @@ func main() {
 	api.POST("/room", createRoomHandler)
 	api.GET("/room/:id", joinRoomHandler)
 	api.DELETE("/room/:id", closeRoomHandler)
+	api.PATCH("/room/:room/:user", updatePermissionHandler)
 
 	e.POST("/app/webhook", livekitWebhookHandler)
+
+	// e.Static("/", "audon-fe/dist/assets")
 
 	e.Logger.Debug(e.Start(":1323"))
 }
@@ -210,10 +227,10 @@ func writeSessionData(c echo.Context, data *SessionData) error {
 
 // handler for GET to /app/verify
 func verifyHandler(c echo.Context) (err error) {
-	valid, _ := verifyTokenInSession(c)
+	valid, acc, _ := verifyTokenInSession(c)
 	if !valid {
 		return c.NoContent(http.StatusUnauthorized)
 	}
 
-	return c.NoContent(http.StatusOK)
+	return c.JSON(http.StatusOK, acc)
 }

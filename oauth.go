@@ -12,14 +12,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func verifyTokenInSession(c echo.Context) (valid bool, err error) {
+func verifyTokenInSession(c echo.Context) (bool, *mastodon.Account, error) {
 	data, err := getSessionData(c)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	if data.MastodonConfig.AccessToken == "" {
-		return false, nil
+		return false, nil, nil
 	}
 	mastoClient := mastodon.NewClient(data.MastodonConfig)
 
@@ -27,10 +27,10 @@ func verifyTokenInSession(c echo.Context) (valid bool, err error) {
 	user, dbErr := findUserByID(c.Request().Context(), data.AudonID)
 
 	if err != nil || dbErr != nil || string(acc.ID) != user.RemoteID {
-		return false, err
+		return false, nil, err
 	}
 
-	return true, nil
+	return true, acc, nil
 }
 
 // handler for POST to /app/login
@@ -41,7 +41,7 @@ func loginHandler(c echo.Context) (err error) {
 		return wrapValidationError(err)
 	}
 
-	valid, _ := verifyTokenInSession(c)
+	valid, _, _ := verifyTokenInSession(c)
 	if !valid {
 		serverURL := &url.URL{
 			Host:   serverHost,
