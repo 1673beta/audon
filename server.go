@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/gob"
-	"errors"
 	"html/template"
 	"io"
 	"log"
@@ -34,11 +33,10 @@ type (
 )
 
 var (
-	err_invalid_cookie error               = errors.New("invalid cookie")
-	mastAppConfigBase  *mastodon.AppConfig = nil
-	mainDB             *mongo.Database     = nil
-	mainValidator                          = validator.New()
-	mainConfig         *AppConfig
+	mastAppConfigBase *mastodon.AppConfig = nil
+	mainDB            *mongo.Database     = nil
+	mainValidator                         = validator.New()
+	mainConfig        *AppConfig
 )
 
 func init() {
@@ -72,6 +70,7 @@ func main() {
 		os.Exit(3)
 	}
 
+	// Setup echo server
 	e := echo.New()
 	defer e.Close()
 
@@ -80,6 +79,8 @@ func main() {
 	}
 	e.Renderer = t
 	e.Validator = &CustomValidator{validator: mainValidator}
+
+	// Setup session middleware (currently Audon stores all client data in cookie)
 	cookieStore := sessions.NewCookieStore([]byte(mainConfig.SeesionSecret))
 	cookieStore.Options = &sessions.Options{
 		Path:     "/",
@@ -106,6 +107,10 @@ func main() {
 
 	api := e.Group("/api", authMiddleware)
 	api.POST("/room", createRoomHandler)
+	api.GET("/room/:id", joinRoomHandler)
+	api.DELETE("/room/:id", closeRoomHandler)
+
+	e.POST("/app/webhook", livekitWebhookHandler)
 
 	e.Logger.Debug(e.Start(":1323"))
 }

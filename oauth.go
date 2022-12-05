@@ -83,7 +83,7 @@ func oauthHandler(c echo.Context) (err error) {
 		if errMsg := c.QueryParam("error"); errMsg == "access_denied" {
 			return c.Redirect(http.StatusFound, "/login")
 		}
-		return echo.NewHTTPError(http.StatusBadRequest, "authentication code needed")
+		return echo.NewHTTPError(http.StatusBadRequest, "auth_code_required")
 	}
 
 	data, err := getSessionData(c)
@@ -153,7 +153,9 @@ func authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		if data.AudonID != "" {
-			if _, err := findUserByID(c.Request().Context(), data.AudonID); err == nil {
+			if user, err := findUserByID(c.Request().Context(), data.AudonID); err == nil {
+				c.Set("user", user)
+				c.Set("session", data)
 				return next(c)
 			}
 		}

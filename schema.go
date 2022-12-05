@@ -33,7 +33,9 @@ type (
 		FollowingOnly bool         `bson:"following_only" json:"following_only"`
 		FollowerOnly  bool         `bson:"follower_only" json:"follower_only"`
 		MutualOnly    bool         `bson:"mutual_only" json:"mutual_only"`
+		Kicked        []*AudonUser `bson:"kicked" json:"kicked"`
 		ScheduledAt   time.Time    `bson:"scheduled_at" json:"scheduled_at"`
+		EndedAt       time.Time    `bson:"ended_at" json:"ended_at"`
 		CreatedAt     time.Time    `bson:"created_at" json:"created_at"`
 	}
 )
@@ -42,6 +44,32 @@ const (
 	COLLECTION_USER = "user"
 	COLLECTION_ROOM = "room"
 )
+
+func (a *AudonUser) Equal(u *AudonUser) bool {
+	if a == nil {
+		return false
+	}
+
+	return a.AudonID == u.AudonID || (a.RemoteID == u.RemoteID && a.RemoteURL == u.RemoteURL)
+}
+
+func (r *Room) IsCoHost(u *AudonUser) bool {
+	if r == nil {
+		return false
+	}
+
+	for _, cohost := range r.CoHost {
+		if cohost.Equal(u) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (r *Room) IsHost(u *AudonUser) bool {
+	return r != nil && r.Host.Equal(u)
+}
 
 func createIndexes(ctx context.Context) error {
 	userColl := mainDB.Collection(COLLECTION_USER)
