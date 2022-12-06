@@ -124,13 +124,13 @@ func main() {
 	e.GET("/app/oauth", oauthHandler)
 	e.GET("/app/verify", verifyHandler)
 
+	e.POST("/app/webhook", livekitWebhookHandler)
+
 	api := e.Group("/api", authMiddleware)
 	api.POST("/room", createRoomHandler)
 	api.GET("/room/:id", joinRoomHandler)
 	api.DELETE("/room/:id", closeRoomHandler)
 	api.PATCH("/room/:room/:user", updatePermissionHandler)
-
-	e.POST("/app/webhook", livekitWebhookHandler)
 
 	// e.Static("/", "audon-fe/dist/assets")
 
