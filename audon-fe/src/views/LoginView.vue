@@ -16,7 +16,12 @@ export default {
     return {
       server: "",
       serverErr: "",
+      lastPath: null,
     };
+  },
+  mounted() {
+    const from = this.$router.options.history.state.back;
+    this.lastPath = from === this.$route.path ? "/" : from;
   },
   validations() {
     return {
@@ -47,6 +52,7 @@ export default {
       }
       try {
         const response = await axios.postForm("/app/login", {
+          redir: this.lastPath,
           server: this.server,
         });
         if (response.status === 201) {
@@ -55,20 +61,23 @@ export default {
           this.serverErr = "";
         }
       } catch (error) {
-        if (error.response && error.response.status === 404) {
-          this.serverErr = "サーバーが見つかりません"
+        if (error.response?.status === 404) {
+          this.serverErr = "サーバーが見つかりません";
         }
       }
     },
-    onInput () {
+    onInput() {
       this.v$.server.$touch();
       this.serverErr = "";
-    }
+    },
   },
 };
 </script>
 
 <template>
+  <v-alert v-if="$route.query.warn" type="warning" variant="text">
+    <div>ログインが必要です</div>
+  </v-alert>
   <h1>Audon</h1>
   <v-form ref="form" @submit.prevent="onSubmit" class="my-3" lazy-validation>
     <v-text-field

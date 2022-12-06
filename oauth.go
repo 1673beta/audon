@@ -33,23 +33,31 @@ func verifyTokenInSession(c echo.Context) (bool, *mastodon.Account, error) {
 	return true, acc, nil
 }
 
+type LoginRequest struct {
+	ServerHost string `validate:"required,hostname,fqdn" form:"server"`
+	Redirect   string `validate:"url_encoded" form:"redir"`
+}
+
 // handler for POST to /app/login
 func loginHandler(c echo.Context) (err error) {
-	serverHost := c.FormValue("server")
+	req := new(LoginRequest)
 
-	if err = mainValidator.Var(serverHost, "required,hostname,fqdn"); err != nil {
+	if err = c.Bind(req); err != nil {
+		return ErrInvalidRequestFormat
+	}
+	if err = mainValidator.Struct(req); err != nil {
 		return wrapValidationError(err)
 	}
 
 	valid, _, _ := verifyTokenInSession(c)
 	if !valid {
 		serverURL := &url.URL{
-			Host:   serverHost,
+			Host:   req.ServerHost,
 			Scheme: "https",
 			Path:   "/",
 		}
 
-		appConfig, err := getAppConfig(serverURL.String())
+		appConfig, err := getAppConfig(serverURL.String(), req.Redirect)
 		if err != nil {
 			return ErrInvalidRequestFormat
 		}
@@ -79,18 +87,23 @@ func loginHandler(c echo.Context) (err error) {
 // handler for GET to /app/oauth?code=****
 func oauthHandler(c echo.Context) (err error) {
 	authCode := c.QueryParam("code")
+	redir := c.QueryParam("redir")
+
 	if authCode == "" {
 		if errMsg := c.QueryParam("error"); errMsg == "access_denied" {
 			return c.Redirect(http.StatusFound, "/login")
 		}
 		return echo.NewHTTPError(http.StatusBadRequest, "auth_code_required")
 	}
+	if redir == "" {
+		redir = "/"
+	}
 
 	data, err := getSessionData(c)
 	if err != nil {
 		return err
 	}
-	appConf, err := getAppConfig(data.MastodonConfig.Server)
+	appConf, err := getAppConfig(data.MastodonConfig.Server, "/")
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -141,18 +154,18 @@ func oauthHandler(c echo.Context) (err error) {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
-	return c.Redirect(http.StatusFound, "/")
+	return c.Redirect(http.StatusFound, redir)
 	// return c.Redirect(http.StatusFound, "http://localhost:5173")
+}
+
+func getOAuthTokenHandler(c echo.Context) (err error) {
+	return nil
 }
 
 func authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		data, err := getSessionData(c)
-		if err != nil {
-			return err
-		}
-
-		if data.AudonID != "" {
+		if err == nil && data.AudonID != "" {
 			if user, err := findUserByID(c.Request().Context(), data.AudonID); err == nil {
 				c.Set("user", user)
 				c.Set("session", data)
