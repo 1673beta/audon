@@ -84,19 +84,27 @@ func loginHandler(c echo.Context) (err error) {
 	return c.NoContent(http.StatusNoContent)
 }
 
+type OAuthRequest struct {
+	Code     string `query:"code"`
+	Redirect string `query:"redir"`
+}
+
 // handler for GET to /app/oauth?code=****
 func oauthHandler(c echo.Context) (err error) {
-	authCode := c.QueryParam("code")
-	redir := c.QueryParam("redir")
+	req := new(OAuthRequest)
 
-	if authCode == "" {
+	if err = c.Bind(req); err != nil {
+		return ErrInvalidRequestFormat
+	}
+
+	if req.Code == "" {
 		if errMsg := c.QueryParam("error"); errMsg == "access_denied" {
 			return c.Redirect(http.StatusFound, "/login")
 		}
 		return echo.NewHTTPError(http.StatusBadRequest, "auth_code_required")
 	}
-	if redir == "" {
-		redir = "/"
+	if req.Redirect == "" {
+		req.Redirect = "/"
 	}
 
 	data, err := getSessionData(c)
@@ -108,9 +116,9 @@ func oauthHandler(c echo.Context) (err error) {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	data.AuthCode = authCode
+	data.AuthCode = req.Code
 	client := mastodon.NewClient(data.MastodonConfig)
-	err = client.AuthenticateToken(c.Request().Context(), authCode, appConf.RedirectURIs)
+	err = client.AuthenticateToken(c.Request().Context(), req.Code, appConf.RedirectURIs)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusForbidden, err.Error())
 	}
@@ -154,12 +162,20 @@ func oauthHandler(c echo.Context) (err error) {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
-	return c.Redirect(http.StatusFound, redir)
+	return c.Redirect(http.StatusFound, req.Redirect)
 	// return c.Redirect(http.StatusFound, "http://localhost:5173")
 }
 
 func getOAuthTokenHandler(c echo.Context) (err error) {
-	return nil
+	data, ok := c.Get("data").(*SessionData)
+	if !ok {
+		return ErrInvalidSession
+	}
+
+	return c.JSON(http.StatusOK, &TokenResponse{
+		Url:   data.MastodonConfig.Server,
+		Token: data.MastodonConfig.AccessToken,
+	})
 }
 
 func authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
@@ -168,7 +184,7 @@ func authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		if err == nil && data.AudonID != "" {
 			if user, err := findUserByID(c.Request().Context(), data.AudonID); err == nil {
 				c.Set("user", user)
-				c.Set("session", data)
+				c.Set("data", data)
 				return next(c)
 			}
 		}

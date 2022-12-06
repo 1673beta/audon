@@ -17,8 +17,8 @@ import (
 
 type (
 	TokenResponse struct {
-		RtcURL string `json:"rtc"`
-		Token  string `json:"token"`
+		Url   string `json:"url"`
+		Token string `json:"token"`
 	}
 )
 
@@ -140,8 +140,8 @@ func joinRoomHandler(c echo.Context) (err error) {
 	}
 
 	resp := &TokenResponse{
-		RtcURL: mainConfig.Livekit.URL.String(),
-		Token:  token,
+		Url:   mainConfig.Livekit.URL.String(),
+		Token: token,
 	}
 
 	// Create room in LiveKit if it doesn't exist

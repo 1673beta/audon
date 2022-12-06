@@ -8,6 +8,7 @@ import axios from "axios";
 
 import App from "./App.vue";
 import router from "./router";
+import { useMastodonStore } from "./stores/mastodon";
 
 import "./assets/style.css";
 import "vuetify/styles";
@@ -25,13 +26,20 @@ const vuetify = createVuetify({
 });
 
 axios.defaults.withCredentials = true;
+// if audon server returns 401, display the login form
 axios.interceptors.response.use(undefined, (error) => {
   if (error.response?.status === 401) {
-    router.push({
-      name: "login"
-    });
+    const donStore = useMastodonStore();
+    donStore.$reset();
   }
   return Promise.reject(error);
+});
+
+router.afterEach((to) => {
+  const donStore = useMastodonStore();
+  if (!to.meta.noauth && !donStore.authorized) {
+    router.push({ name: "login" });
+  }
 });
 
 const app = createApp(App);

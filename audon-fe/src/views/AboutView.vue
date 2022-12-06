@@ -1,20 +1,25 @@
 <script>
 import { RouterLink } from "vue-router";
-import axios from "axios";
+import {useMastodonStore} from "../stores/mastodon"
 
 export default {
-  async mounted() {
-    try {
-      await axios.get("/app/verify");
-    } catch {}
+  setup() {
+    const donStore = useMastodonStore();
+
+    return {
+      donStore
+    }
   },
+  mounted() {
+  }
 };
 </script>
 
 <template>
   <div class="about">
     <h1>This is an about page</h1>
-    <RouterLink to="login">Login</RouterLink>
+    <RouterLink :to="{ name: 'login' }">Login</RouterLink>
+    <RouterLink :to="{ name: 'home' }">Home</RouterLink>
   </div>
 </template>
 

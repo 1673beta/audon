@@ -1,5 +1,9 @@
 <script setup>
 import { RouterView } from 'vue-router'
+import { useMastodonStore } from "./stores/mastodon"
+
+const donStore = useMastodonStore();
+donStore.fetchToken();
 </script>
 
 <template>

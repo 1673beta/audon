@@ -2,7 +2,7 @@
 import { RouterLink } from "vue-router";
 import { useVuelidate } from "@vuelidate/core";
 import { required, helpers } from "@vuelidate/validators";
-import utils from "../assets/utils";
+import { validators } from "../assets/utils";
 import _ from "lodash/collection";
 import axios from "axios";
 
@@ -29,7 +29,7 @@ export default {
         required: helpers.withMessage("アドレスを入力してください", required),
         hostname: helpers.withMessage(
           "有効なアドレスを入力してください",
-          utils.validators.fqdn
+          validators.fqdn
         ),
       },
     };

@@ -64,7 +64,7 @@ func main() {
 	}
 	lkRoomServiceClient = lksdk.NewRoomServiceClient(lkURL.String(), mainConfig.Livekit.APIKey, mainConfig.Livekit.APISecret)
 
-	backContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	backContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	// Setup database client
@@ -112,7 +112,7 @@ func main() {
 	}
 	if mainConfig.Environment == "development" {
 		sessionOptions.Domain = ""
-		sessionOptions.SameSite = http.SameSiteNoneMode
+		sessionOptions.SameSite = http.SameSiteDefaultMode
 		sessionOptions.Secure = false
 		sessionOptions.MaxAge = 3600 * 24
 		sessionOptions.HttpOnly = false
@@ -127,6 +127,7 @@ func main() {
 	e.POST("/app/webhook", livekitWebhookHandler)
 
 	api := e.Group("/api", authMiddleware)
+	api.GET("/token", getOAuthTokenHandler)
 	api.POST("/room", createRoomHandler)
 	api.GET("/room/:id", joinRoomHandler)
 	api.DELETE("/room/:id", closeRoomHandler)
