@@ -32,19 +32,55 @@ func createRoomHandler(c echo.Context) error {
 		return wrapValidationError(err)
 	}
 
+	host := c.Get("user").(*AudonUser)
+	room.Host = host
+
+	coll := mainDB.Collection(COLLECTION_ROOM)
+
+	now := time.Now().UTC()
+	if now.After(room.ScheduledAt) {
+		// host is trying to create an instant room even though there is another instant room that wasn't used, assumed that host won't use such rooms
+		if cur, err := coll.Find(c.Request().Context(),
+			bson.D{
+				{Key: "host.audon_id", Value: host.AudonID},
+				{Key: "ended_at", Value: time.Time{}}, // host didn't close
+				{Key: "$expr", Value: bson.D{ // instant room
+					{Key: "$eq", Value: bson.A{"$created_at", "$scheduled_at"}},
+				}},
+			}); err == nil {
+			defer cur.Close(c.Request().Context())
+
+			roomIDsToBeDeleted := []string{}
+			for cur.Next(c.Request().Context()) {
+				emptyRoom := new(Room)
+				if err := cur.Decode(emptyRoom); err == nil {
+					if !emptyRoom.IsAnyomeInLivekitRoom(c.Request().Context()) {
+						roomIDsToBeDeleted = append(roomIDsToBeDeleted, emptyRoom.RoomID)
+					}
+				}
+			}
+			if len(roomIDsToBeDeleted) > 0 {
+				coll.DeleteMany(c.Request().Context(), bson.D{{
+					Key:   "room_id",
+					Value: bson.D{{Key: "$in", Value: roomIDsToBeDeleted}}},
+				})
+			}
+		}
+
+		room.ScheduledAt = now
+	} else {
+		// TODO: limit the number of rooms one can schedule?
+	}
+
+	// TODO: use a job scheduler to manage rooms?
+
+	room.EndedAt = time.Time{}
+
 	canonic, err := nanoid.Standard(16)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	room.RoomID = canonic()
-
-	host := c.Get("user").(*AudonUser)
-	room.Host = host
-
-	now := time.Now().UTC()
-	if now.After(room.ScheduledAt) {
-		room.ScheduledAt = now
-	}
 
 	// if cohosts are already registered, retrieve their data from DB
 	for i, cohost := range room.CoHost {
@@ -55,7 +91,6 @@ func createRoomHandler(c echo.Context) error {
 	}
 
 	room.CreatedAt = now
-	coll := mainDB.Collection(COLLECTION_ROOM)
 	if _, insertErr := coll.InsertOne(c.Request().Context(), room); insertErr != nil {
 		c.Logger().Error(insertErr)
 		return echo.NewHTTPError(http.StatusInternalServerError)
@@ -65,6 +100,8 @@ func createRoomHandler(c echo.Context) error {
 }
 
 func joinRoomHandler(c echo.Context) (err error) {
+	// TODO: decline the request if user is already in the room
+
 	roomID := c.Param("id")
 	if err := mainValidator.Var(&roomID, "required,printascii"); err != nil {
 		return wrapValidationError(err)
@@ -86,7 +123,7 @@ func joinRoomHandler(c echo.Context) (err error) {
 
 	// check if room has already ended
 	if !room.EndedAt.IsZero() && room.EndedAt.Before(now) {
-		return echo.NewHTTPError(http.StatusGone, "already_ended")
+		return ErrAlreadyEnded
 	}
 
 	// return 403 if one has been kicked
@@ -136,6 +173,11 @@ func closeRoomHandler(c echo.Context) error {
 	} else if err != nil {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	// return 410 if the room has already ended
+	if !room.EndedAt.IsZero() {
+		return ErrAlreadyEnded
 	}
 
 	// only host can close the room
@@ -220,7 +262,7 @@ func getRoomToken(room *Room, user *AudonUser, canTalk bool) (string, error) {
 
 func getRoomInLivekit(ctx context.Context, roomID string) (*livekit.Room, bool) {
 	rooms, _ := lkRoomServiceClient.ListRooms(ctx, &livekit.ListRoomsRequest{Names: []string{roomID}})
-	if len(rooms.GetRooms()) != 0 {
+	if len(rooms.GetRooms()) == 0 {
 		return nil, false
 	}
 

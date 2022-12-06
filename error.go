@@ -14,6 +14,7 @@ var (
 	ErrRoomNotFound          = echo.NewHTTPError(http.StatusNotFound, "room_not_found")
 	ErrOperationNotPermitted = echo.NewHTTPError(http.StatusForbidden, "operation_not_permitted")
 	ErrUserNotFound          = echo.NewHTTPError(http.StatusNotFound, "user_not_found")
+	ErrAlreadyEnded          = echo.NewHTTPError(http.StatusGone, "already_ended")
 )
 
 func wrapValidationError(err error) error {

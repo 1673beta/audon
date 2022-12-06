@@ -85,6 +85,13 @@ func (r *Room) IsUserInLivekitRoom(ctx context.Context, userID string) bool {
 	return false
 }
 
+func (r *Room) IsAnyomeInLivekitRoom(ctx context.Context) bool {
+	participantsInfo, _ := lkRoomServiceClient.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: r.RoomID})
+	participants := participantsInfo.GetParticipants()
+
+	return len(participants) > 0
+}
+
 func createIndexes(ctx context.Context) error {
 	userColl := mainDB.Collection(COLLECTION_USER)
 	userIndexes, err := userColl.Indexes().ListSpecifications(ctx)

@@ -32,5 +32,5 @@ app.use(createPinia());
 app.use(vuetify);
 app.use(router);
 
-app.config.compilerOptions.delimiters = ["{%", "%}"];
+// app.config.compilerOptions.delimiters = ["{%", "%}"];
 app.mount("#app");
