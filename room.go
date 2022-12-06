@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -18,9 +19,6 @@ type (
 	TokenResponse struct {
 		RtcURL string `json:"rtc"`
 		Token  string `json:"token"`
-	}
-
-	PermissionRequest struct {
 	}
 )
 
@@ -98,7 +96,7 @@ func joinRoomHandler(c echo.Context) (err error) {
 		}
 	}
 
-	token, err := getRoomToken(room, user.AudonID, room.IsHost(user) || room.IsCoHost(user)) // host and cohost can talk from the beginning
+	token, err := getRoomToken(room, user, room.IsHost(user) || room.IsCoHost(user)) // host and cohost can talk from the beginning
 	if err != nil {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
@@ -109,9 +107,12 @@ func joinRoomHandler(c echo.Context) (err error) {
 		Token:  token,
 	}
 
-	// Create room in LiveKit
+	// Create room in LiveKit if it doesn't exist
+	metadata, _ := json.Marshal(room)
+
 	_, err = lkRoomServiceClient.CreateRoom(c.Request().Context(), &livekit.CreateRoomRequest{
-		Name: room.RoomID,
+		Name:     room.RoomID,
+		Metadata: string(metadata),
 	})
 	if err != nil {
 		c.Logger().Error(err)
@@ -131,7 +132,7 @@ func closeRoomHandler(c echo.Context) error {
 	// retrieve room info from the given room ID
 	room, err := findRoomByID(c.Request().Context(), roomID)
 	if err == mongo.ErrNoDocuments {
-		return c.String(http.StatusNotFound, "room_not_found")
+		return ErrRoomNotFound
 	} else if err != nil {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
@@ -140,7 +141,7 @@ func closeRoomHandler(c echo.Context) error {
 	// only host can close the room
 	user := c.Get("user").(*AudonUser)
 	if !room.IsHost(user) {
-		return c.String(http.StatusForbidden, "must_be_host")
+		return ErrOperationNotPermitted
 	}
 
 	if err := endRoom(c.Request().Context(), room); err != nil {
@@ -152,20 +153,78 @@ func closeRoomHandler(c echo.Context) error {
 }
 
 func updatePermissionHandler(c echo.Context) error {
+	roomID := c.Param("room")
 
+	// look up room in livekit
+	room, exists := getRoomInLivekit(c.Request().Context(), roomID)
+	if !exists {
+		return ErrRoomNotFound
+	}
+
+	audonRoom := new(Room)
+	err := json.Unmarshal([]byte(room.Metadata), audonRoom)
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	iam := c.Get("user").(*AudonUser)
+
+	if !(audonRoom.IsHost(iam) || audonRoom.IsCoHost(iam)) {
+		return ErrOperationNotPermitted
+	}
+
+	tgtAudonID := c.Param("user")
+
+	if !audonRoom.IsUserInLivekitRoom(c.Request().Context(), tgtAudonID) {
+		return ErrUserNotFound
+	}
+
+	permission := new(livekit.ParticipantPermission)
+	if err := c.Bind(permission); err != nil {
+		return ErrInvalidRequestFormat
+	}
+
+	info, err := lkRoomServiceClient.UpdateParticipant(c.Request().Context(), &livekit.UpdateParticipantRequest{
+		Room:       roomID,
+		Identity:   tgtAudonID,
+		Permission: permission,
+	})
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, info)
 }
 
-func getRoomToken(room *Room, identity string, canTalk bool) (string, error) {
+func getRoomToken(room *Room, user *AudonUser, canTalk bool) (string, error) {
 	at := auth.NewAccessToken(mainConfig.Livekit.APIKey, mainConfig.Livekit.APISecret)
+	canPublishData := true
 	grant := &auth.VideoGrant{
-		Room:       room.RoomID,
-		RoomJoin:   true,
-		RoomCreate: false,
-		CanPublish: &canTalk,
+		Room:           room.RoomID,
+		RoomJoin:       true,
+		RoomCreate:     false,
+		CanPublish:     &canTalk,
+		CanPublishData: &canPublishData,
 	}
-	at.AddGrant(grant).SetIdentity(identity).SetValidFor(10 * time.Minute)
+	metadata, _ := json.Marshal(map[string]string{
+		"remote_id":  user.RemoteID,
+		"remote_url": user.RemoteURL,
+	})
+
+	at.AddGrant(grant).SetIdentity(user.AudonID).SetValidFor(10 * time.Minute).SetMetadata(string(metadata))
 
 	return at.ToJWT()
+}
+
+func getRoomInLivekit(ctx context.Context, roomID string) (*livekit.Room, bool) {
+	rooms, _ := lkRoomServiceClient.ListRooms(ctx, &livekit.ListRoomsRequest{Names: []string{roomID}})
+	if len(rooms.GetRooms()) != 0 {
+		return nil, false
+	}
+
+	return rooms.GetRooms()[0], true
 }
 
 func findRoomByID(ctx context.Context, roomID string) (*Room, error) {

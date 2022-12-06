@@ -8,9 +8,12 @@ import (
 )
 
 var (
-	ErrInvalidRequestFormat = echo.NewHTTPError(http.StatusBadRequest, "invalid_request_format")
-	ErrInvalidSession       = echo.NewHTTPError(http.StatusBadRequest)
-	ErrSessionNotAvailable  = echo.NewHTTPError(http.StatusInternalServerError, "session_not_available")
+	ErrInvalidRequestFormat  = echo.NewHTTPError(http.StatusBadRequest, "invalid_request_format")
+	ErrInvalidSession        = echo.NewHTTPError(http.StatusBadRequest)
+	ErrSessionNotAvailable   = echo.NewHTTPError(http.StatusInternalServerError, "session_not_available")
+	ErrRoomNotFound          = echo.NewHTTPError(http.StatusNotFound, "room_not_found")
+	ErrOperationNotPermitted = echo.NewHTTPError(http.StatusForbidden, "operation_not_permitted")
+	ErrUserNotFound          = echo.NewHTTPError(http.StatusNotFound, "user_not_found")
 )
 
 func wrapValidationError(err error) error {

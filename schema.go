@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/livekit/protocol/livekit"
 	mastodon "github.com/mattn/go-mastodon"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -29,11 +30,11 @@ type (
 		Title         string       `bson:"title" json:"title" validate:"required,printascii|multibyte"`
 		Description   string       `bson:"description" json:"description" validate:"printascii|multibyte"`
 		Host          *AudonUser   `bson:"host" json:"host"`
-		CoHost        []*AudonUser `bson:"cohost" json:"cohost"`
+		CoHost        []*AudonUser `bson:"cohost" json:"cohost,omitempty"`
 		FollowingOnly bool         `bson:"following_only" json:"following_only"`
 		FollowerOnly  bool         `bson:"follower_only" json:"follower_only"`
 		MutualOnly    bool         `bson:"mutual_only" json:"mutual_only"`
-		Kicked        []*AudonUser `bson:"kicked" json:"kicked"`
+		Kicked        []*AudonUser `bson:"kicked" json:"kicked,omitempty"`
 		ScheduledAt   time.Time    `bson:"scheduled_at" json:"scheduled_at"`
 		EndedAt       time.Time    `bson:"ended_at" json:"ended_at"`
 		CreatedAt     time.Time    `bson:"created_at" json:"created_at"`
@@ -69,6 +70,19 @@ func (r *Room) IsCoHost(u *AudonUser) bool {
 
 func (r *Room) IsHost(u *AudonUser) bool {
 	return r != nil && r.Host.Equal(u)
+}
+
+func (r *Room) IsUserInLivekitRoom(ctx context.Context, userID string) bool {
+	participantsInfo, _ := lkRoomServiceClient.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: r.RoomID})
+	participants := participantsInfo.GetParticipants()
+
+	for _, info := range participants {
+		if info.GetIdentity() == userID {
+			return true
+		}
+	}
+
+	return false
 }
 
 func createIndexes(ctx context.Context) error {
