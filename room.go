@@ -83,10 +83,10 @@ func createRoomHandler(c echo.Context) error {
 	room.RoomID = canonic()
 
 	// if cohosts are already registered, retrieve their data from DB
-	for i, cohost := range room.CoHost {
+	for i, cohost := range room.CoHosts {
 		cohostUser, err := findUserByRemote(c.Request().Context(), cohost.RemoteID, cohost.RemoteURL)
 		if err == nil {
-			room.CoHost[i] = cohostUser
+			room.CoHosts[i] = cohostUser
 		}
 	}
 

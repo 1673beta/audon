@@ -4,12 +4,13 @@ import { RouterView } from 'vue-router'
 
 <template>
   <v-app class="fill-height">
-    <v-system-bar :height="40">
+    <v-system-bar window>
       <v-row>
         <v-col class="text-center">
           <h2>Audon</h2>
         </v-col>
       </v-row>
+      <div style="position:fixed">v0.1.0-dev</div>
     </v-system-bar>
     <v-main>
       <v-container class="fill-height">

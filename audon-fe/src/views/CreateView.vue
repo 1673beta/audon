@@ -1,15 +1,18 @@
 <script>
 import { mdiArrowLeft, mdiMagnify, mdiClose, mdiPlus } from "@mdi/js";
 import { useVuelidate } from "@vuelidate/core";
+import { useMastodonStore } from "../stores/mastodon"
 import { helpers, required } from "@vuelidate/validators";
 import { debounce, some, map } from "lodash-es";
 import { login } from "masto";
 import { webfinger } from "../assets/utils";
+import axios from "axios";
 
 export default {
   setup() {
     return {
       v$: useVuelidate(),
+      donStore: useMastodonStore()
     };
   },
   created() {
@@ -45,6 +48,7 @@ export default {
         timeout: 5000,
         colour: "",
       },
+      isSubmissionLoading: false,
     };
   },
   validations() {
@@ -64,11 +68,15 @@ export default {
   watch: {
     searchQuery(val) {
       this.isCandiadateLoading = false;
+      this.cohostSearch.cancel();
       if (!val) return;
       if (some(this.cohosts, { finger: val })) {
         this.searchError.message = "すでに追加済みです";
         this.searchError.colour = "warning";
         this.searchError.enabled = true;
+        return;
+      }
+      if (val === this.donStore.myWebfinger) {
         return;
       }
       this.isCandiadateLoading = true;
@@ -85,7 +93,10 @@ export default {
       }
       try {
         const url = new URL(`https://${finger[1]}`);
-        const client = await login({ url: url.toString(), disableVersionCheck: true });
+        const client = await login({
+          url: url.toString(),
+          disableVersionCheck: true,
+        });
         const user = await client.accounts.lookup({ acct: finger[0] });
         user.finger = webfinger(user);
         this.searchResult = user;
@@ -105,6 +116,30 @@ export default {
       this.searchQuery = "";
     },
     webfinger,
+    async onSubmit() {
+      const isFormCorrect = await this.v$.$validate();
+      if (!isFormCorrect) {
+        return;
+      }
+      const payload = {
+        title: this.title,
+        description: this.description,
+        cohosts: map(this.cohosts, (u) => ({
+          remote_id: u.acct,
+          remote_url: u.url,
+        })),
+      };
+      try {
+        const resp = await axios.post("/api/room", payload);
+        if (resp.status === 201) {
+          // TODO: redirect to the created room
+        }
+      } catch (error) {
+        this.searchError.message = `Error: ${error}`
+        this.searchError.colour = "error"
+        this.searchError.enabled = true
+      }
+    },
   },
 };
 </script>
@@ -123,7 +158,7 @@ export default {
       >
         {{ searchError.message }}
       </v-snackbar>
-      <v-card>
+      <v-card :loading="isSubmissionLoading">
         <v-card-title class="text-center">部屋を新規作成</v-card-title>
         <v-card-text>
           <v-form>
@@ -237,7 +272,7 @@ export default {
           </v-form>
         </v-card-text>
         <v-card-actions>
-          <v-btn block color="indigo" variant="flat" >
+          <v-btn block color="indigo" @click="onSubmit" variant="flat">
             作成
           </v-btn>
         </v-card-actions>

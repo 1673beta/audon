@@ -27,10 +27,10 @@ type (
 
 	Room struct {
 		RoomID        string       `bson:"room_id" json:"room_id" validate:"required,printascii"`
-		Title         string       `bson:"title" json:"title" validate:"required,printascii|multibyte"`
-		Description   string       `bson:"description" json:"description" validate:"printascii|multibyte"`
+		Title         string       `bson:"title" json:"title" validate:"required,max=100,printascii|multibyte"`
+		Description   string       `bson:"description" json:"description" validate:"max=500,printascii|multibyte"`
 		Host          *AudonUser   `bson:"host" json:"host"`
-		CoHost        []*AudonUser `bson:"cohost" json:"cohost,omitempty"`
+		CoHosts       []*AudonUser `bson:"cohost" json:"cohosts,omitempty"`
 		FollowingOnly bool         `bson:"following_only" json:"following_only"`
 		FollowerOnly  bool         `bson:"follower_only" json:"follower_only"`
 		MutualOnly    bool         `bson:"mutual_only" json:"mutual_only"`
@@ -59,7 +59,7 @@ func (r *Room) IsCoHost(u *AudonUser) bool {
 		return false
 	}
 
-	for _, cohost := range r.CoHost {
+	for _, cohost := range r.CoHosts {
 		if cohost.Equal(u) {
 			return true
 		}
