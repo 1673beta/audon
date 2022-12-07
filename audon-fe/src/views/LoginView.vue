@@ -3,7 +3,7 @@ import { RouterLink } from "vue-router";
 import { useVuelidate } from "@vuelidate/core";
 import { required, helpers } from "@vuelidate/validators";
 import { validators } from "../assets/utils";
-import _ from "lodash/collection";
+import { map } from "lodash-es";
 import axios from "axios";
 
 export default {
@@ -37,7 +37,7 @@ export default {
   computed: {
     serverErrors() {
       const errors = this.v$.server.$errors;
-      const messages = _.map(errors, (e) => e.$message);
+      const messages = map(errors, (e) => e.$message);
       if (this.serverErr !== "") {
         messages.push(this.serverErr);
       }
@@ -56,9 +56,8 @@ export default {
           server: this.server,
         });
         if (response.status === 201) {
-          // this.$router.push(response.data)
-          location.assign(response.data);
           this.serverErr = "";
+          location.assign(response.data);
         }
       } catch (error) {
         if (error.response?.status === 404) {
@@ -78,7 +77,6 @@ export default {
   <v-alert v-if="$route.query.warn" type="warning" variant="text">
     <div>ログインが必要です</div>
   </v-alert>
-  <h1>Audon</h1>
   <v-form ref="form" @submit.prevent="onSubmit" class="my-3" lazy-validation>
     <v-text-field
       v-model="server"

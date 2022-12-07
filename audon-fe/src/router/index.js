@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "../views/HomeView.vue";
 import LoginView from "../views/LoginView.vue";
+import CreateView from "../views/CreateView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -25,10 +26,14 @@ const router = createRouter({
       path: "/login",
       name: "login",
       meta: {
-        noauth: true
+        noauth: true,
       },
       component: LoginView,
-      // component: () => import("../views/LoginView.vue"),
+    },
+    {
+      path: "/create",
+      name: "create",
+      component: CreateView,
     },
   ],
 });
