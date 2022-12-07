@@ -1,10 +1,17 @@
 <script>
-import { mdiArrowLeft, mdiMagnify, mdiClose } from "@mdi/js";
-import { debounce } from "lodash-es";
+import { mdiArrowLeft, mdiMagnify, mdiClose, mdiPlus } from "@mdi/js";
+import { useVuelidate } from "@vuelidate/core";
+import { helpers, required } from "@vuelidate/validators";
+import { debounce, some, map } from "lodash-es";
 import { login } from "masto";
 import { webfinger } from "../assets/utils";
 
 export default {
+  setup() {
+    return {
+      v$: useVuelidate(),
+    };
+  },
   created() {
     this.cohostSearch = debounce(this.search, 1000);
   },
@@ -16,17 +23,10 @@ export default {
       mdiArrowLeft,
       mdiMagnify,
       mdiClose,
+      mdiPlus,
       title: "",
       description: "",
-      cohosts: [
-        {
-          acct: "admin",
-          displayName: "Test Name",
-          avatar:
-            "https://mstdn.nmkj.tk/system/accounts/avatars/109/453/041/233/122/320/original/a111d61c635f57ae.png",
-          url: "https://mstdn.nmkj.tk/@admin",
-        },
-      ],
+      cohosts: [],
       relationship: "everyone",
       relOptions: [
         { title: "制限なし", value: "everyone" },
@@ -35,36 +35,76 @@ export default {
         { title: "フォローまたはフォロワー限定", value: "knows" },
         { title: "相互フォロー限定", value: "mutual" },
       ],
-      searchResult:
-        {
-          acct: "user1",
-          displayName: "User 1",
-          avatar:
-            "https://media.songbird.cloud/accounts/avatars/109/374/604/338/855/643/original/23b2384b4bc8ccae.png",
-          url: "https://mstdn.nmkj.tk/@user1",
-        },
+      scheduledAt: null,
+      searchResult: null,
       searchQuery: "",
       isCandiadateLoading: false,
+      searchError: {
+        enabled: false,
+        message: "",
+        timeout: 5000,
+        colour: "",
+      },
     };
+  },
+  validations() {
+    return {
+      title: {
+        required: helpers.withMessage("部屋の名前を入力してください", required),
+      },
+    };
+  },
+  computed: {
+    titleErrors() {
+      const errors = this.v$.title.$errors;
+      const messages = map(errors, (e) => e.$message);
+      return messages;
+    },
+  },
+  watch: {
+    searchQuery(val) {
+      this.isCandiadateLoading = false;
+      if (!val) return;
+      if (some(this.cohosts, { finger: val })) {
+        this.searchError.message = "すでに追加済みです";
+        this.searchError.colour = "warning";
+        this.searchError.enabled = true;
+        return;
+      }
+      this.isCandiadateLoading = true;
+      this.cohostSearch(val);
+    },
   },
   methods: {
     async search(val) {
-      if (!val) return;
-      const webfinger = val.split("@");
-      if (webfinger.length < 2) return;
-      this.cohostSearch(webfinger);
+      const finger = val.split("@");
+      if (finger.length < 2) return;
+      else if (finger.length === 3) {
+        finger.splice(0, 1);
+        this.searchQuery = finger.join("@");
+      }
       try {
-        const url = new URL(`https://${webfinger[1]}`);
-        this.isCandiadateLoading = true;
-        const client = await login({ url: url.toString() });
-        const user = await client.accounts.lookup({ acct: webfinger[0] });
-        this.searchResult = [user];
-      } catch {
+        const url = new URL(`https://${finger[1]}`);
+        const client = await login({ url: url.toString(), disableVersionCheck: true });
+        const user = await client.accounts.lookup({ acct: finger[0] });
+        user.finger = webfinger(user);
+        this.searchResult = user;
+      } catch (error) {
+        if (error.isMastoError && error.statusCode === 404) {
+          this.searchError.message = `${val} が見つかりません`;
+          this.searchError.colour = "error";
+          this.searchError.enabled = true;
+        }
       } finally {
         this.isCandiadateLoading = false;
       }
     },
-    webfinger
+    onResultClick() {
+      this.cohosts.push(this.searchResult);
+      this.searchResult = null;
+      this.searchQuery = "";
+    },
+    webfinger,
   },
 };
 </script>
@@ -76,11 +116,25 @@ export default {
         <v-icon start :icon="mdiArrowLeft"></v-icon>
         戻る
       </v-btn>
+      <v-snackbar
+        v-model="searchError.enabled"
+        color="error"
+        :timeout="searchError.timeout"
+      >
+        {{ searchError.message }}
+      </v-snackbar>
       <v-card>
         <v-card-title class="text-center">部屋を新規作成</v-card-title>
         <v-card-text>
           <v-form>
-            <v-text-field v-model="title" label="タイトル"></v-text-field>
+            <v-text-field
+              v-model="title"
+              label="タイトル"
+              :error-messages="titleErrors"
+              required
+              @input="v$.title.$touch()"
+              @blur="v$.title.$touch()"
+            ></v-text-field>
             <v-textarea
               auto-grow
               v-model="description"
@@ -94,15 +148,23 @@ export default {
               disabled
               :messages="['今後のアップデートで追加予定']"
             ></v-select>
-            <v-card class="my-2" variant="outlined">
+            <v-text-field
+              type="datetime-local"
+              v-model="scheduledAt"
+              label="開始予約"
+              disabled
+              :messages="['今後のアップデートで追加予定']"
+            ></v-text-field>
+            <v-card class="mt-3" variant="outlined">
               <v-card-title class="text-subtitle-1">共同ホスト</v-card-title>
-              <v-card-text v-if="(cohosts.length > 0 || searchResult)">
-                <div v-if="(cohosts.length > 0)">
+              <v-card-text v-if="cohosts.length > 0 || searchResult">
+                <div v-if="cohosts.length > 0">
                   <v-list lines="two" variant="tonal">
                     <v-list-item
                       v-for="(cohost, index) in cohosts"
                       :key="cohost.url"
                       :title="cohost.displayName"
+                      class="my-1"
                       rounded
                     >
                       <template v-slot:prepend>
@@ -114,25 +176,44 @@ export default {
                         {{ webfinger(cohost) }}
                       </template>
                       <template v-slot:append>
-                        <v-btn variant="plain" size="small" :icon="mdiClose" @click="() => {cohosts.splice(index)}"></v-btn>
+                        <v-btn
+                          variant="text"
+                          size="small"
+                          :icon="mdiClose"
+                          @click="
+                            () => {
+                              cohosts.splice(index, 1);
+                            }
+                          "
+                        ></v-btn>
                       </template>
                     </v-list-item>
                   </v-list>
                 </div>
-                <div v-if="(searchResult)">
+                <div v-if="searchResult">
                   <v-divider></v-divider>
-                  <v-list lines="two" variant="flat">
-                    <v-list-item :title="searchResult.displayName">
+                  <v-list lines="two">
+                    <v-list-item
+                      :key="0"
+                      :value="searchResult.acct"
+                      :title="searchResult.displayName"
+                      @click="onResultClick"
+                    >
                       <template v-slot:prepend>
                         <v-avatar class="rounded">
                           <v-img :src="searchResult.avatar"></v-img>
                         </v-avatar>
                       </template>
+                      <template v-slot:append>
+                        <v-btn
+                          size="small"
+                          variant="plain"
+                          :icon="mdiPlus"
+                        ></v-btn>
+                      </template>
                       <v-list-item-subtitle>
                         {{ webfinger(searchResult) }}
                       </v-list-item-subtitle>
-                      <v-list-item-action end>
-                      </v-list-item-action>
                     </v-list-item>
                   </v-list>
                 </div>
@@ -141,10 +222,12 @@ export default {
                 <v-text-field
                   density="compact"
                   v-model="searchQuery"
+                  type="email"
                   :prepend-inner-icon="mdiMagnify"
                   single-line
                   hide-details
                   clearable
+                  :error="searchError.enabled"
                   :loading="isCandiadateLoading"
                   placeholder="user@mastodon.example"
                 >
@@ -153,6 +236,11 @@ export default {
             </v-card>
           </v-form>
         </v-card-text>
+        <v-card-actions>
+          <v-btn block color="indigo" variant="flat" >
+            作成
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </div>
   </main>
