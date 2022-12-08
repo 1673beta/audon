@@ -11,7 +11,7 @@ import router from "./router";
 import { useMastodonStore } from "./stores/mastodon";
 
 import "./assets/style.css";
-import "./assets/koruri.css";
+import "./assets/koruri/koruri.css";
 import "vuetify/styles";
 
 const vuetify = createVuetify({
