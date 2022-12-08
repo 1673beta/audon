@@ -1,10 +1,13 @@
 import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "../views/HomeView.vue";
 import LoginView from "../views/LoginView.vue";
+import RoomView from "../views/RoomView.vue";
+import NotFoundView from "../views/NotFoundView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    { path: "/:pathMatch(.*)*", name: "notfound", component: NotFoundView },
     {
       path: "/",
       name: "home",
@@ -14,7 +17,7 @@ const router = createRouter({
       path: "/about",
       name: "about",
       meta: {
-        noauth: true
+        noauth: true,
       },
       // route level code-splitting
       // this generates a separate chunk (About.[hash].js) for this route
@@ -33,6 +36,11 @@ const router = createRouter({
       path: "/create",
       name: "create",
       component: () => import("../views/CreateView.vue"),
+    },
+    {
+      path: "/r/:id",
+      name: "room",
+      component: RoomView,
     },
   ],
 });

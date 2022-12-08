@@ -1,7 +1,7 @@
 <script>
 import { mdiArrowLeft, mdiMagnify, mdiClose, mdiPlus } from "@mdi/js";
 import { useVuelidate } from "@vuelidate/core";
-import { useMastodonStore } from "../stores/mastodon"
+import { useMastodonStore } from "../stores/mastodon";
 import { helpers, required } from "@vuelidate/validators";
 import { debounce, some, map } from "lodash-es";
 import { login } from "masto";
@@ -12,7 +12,7 @@ export default {
   setup() {
     return {
       v$: useVuelidate(),
-      donStore: useMastodonStore()
+      donStore: useMastodonStore(),
     };
   },
   created() {
@@ -125,19 +125,22 @@ export default {
         title: this.title,
         description: this.description,
         cohosts: map(this.cohosts, (u) => ({
-          remote_id: u.acct,
+          remote_id: u.id,
           remote_url: u.url,
         })),
       };
+      this.isSubmissionLoading = false;
       try {
         const resp = await axios.post("/api/room", payload);
         if (resp.status === 201) {
-          // TODO: redirect to the created room
+          this.$router.push({ name: "room", params: { id: resp.data } });
         }
       } catch (error) {
-        this.searchError.message = `Error: ${error}`
-        this.searchError.colour = "error"
-        this.searchError.enabled = true
+        this.searchError.message = `Error: ${error}`;
+        this.searchError.colour = "error";
+        this.searchError.enabled = true;
+      } finally {
+        this.isSubmissionLoading = false;
       }
     },
   },

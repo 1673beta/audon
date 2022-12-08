@@ -14,7 +14,7 @@ import { RouterView } from 'vue-router'
     </v-system-bar>
     <v-main>
       <v-container class="fill-height">
-        <v-row align="center" justify="center" class="fill-height">
+        <v-row align="center" justify="center" class="fill-height" id="mainArea">
           <v-col>
             <v-responsive class="mx-auto" max-width="600px">
                 <RouterView />

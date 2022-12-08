@@ -28,7 +28,7 @@ type (
 	Room struct {
 		RoomID        string       `bson:"room_id" json:"room_id" validate:"required,printascii"`
 		Title         string       `bson:"title" json:"title" validate:"required,max=100,printascii|multibyte"`
-		Description   string       `bson:"description" json:"description" validate:"max=500,printascii|multibyte"`
+		Description   string       `bson:"description" json:"description" validate:"max=500,ascii|multibyte"`
 		Host          *AudonUser   `bson:"host" json:"host"`
 		CoHosts       []*AudonUser `bson:"cohost" json:"cohosts,omitempty"`
 		FollowingOnly bool         `bson:"following_only" json:"following_only"`

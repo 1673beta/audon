@@ -100,8 +100,6 @@ func createRoomHandler(c echo.Context) error {
 }
 
 func joinRoomHandler(c echo.Context) (err error) {
-	// TODO: decline the request if user is already in the room
-
 	roomID := c.Param("id")
 	if err := mainValidator.Var(&roomID, "required,printascii"); err != nil {
 		return wrapValidationError(err)
@@ -112,6 +110,11 @@ func joinRoomHandler(c echo.Context) (err error) {
 	room, err := findRoomByID(c.Request().Context(), roomID)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusNotFound)
+	}
+
+	// decline the request if user is already in the room
+	if room.IsUserInLivekitRoom(c.Request().Context(), user.AudonID) {
+		return echo.NewHTTPError(http.StatusNotAcceptable, "already_in_room")
 	}
 
 	now := time.Now().UTC()

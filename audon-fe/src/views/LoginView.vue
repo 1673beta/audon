@@ -86,6 +86,7 @@ export default {
       class="mb-2"
       :error-messages="serverErrors"
       @update:model-value="onInput"
+      type="url"
       clearable
     />
     <v-btn block @click="onSubmit" :disabled="!v$.$dirty || v$.$error"
