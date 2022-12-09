@@ -16,12 +16,7 @@ export default {
     return {
       server: "",
       serverErr: "",
-      lastPath: null,
     };
-  },
-  mounted() {
-    const from = this.$router.options.history.state.back;
-    this.lastPath = from === this.$route.path ? "/" : from;
   },
   validations() {
     return {
@@ -35,6 +30,9 @@ export default {
     };
   },
   computed: {
+    lastPath() {
+      return this.$route.query.l ?? "";
+    },
     serverErrors() {
       const errors = this.v$.server.$errors;
       const messages = map(errors, (e) => e.$message);

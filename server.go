@@ -134,7 +134,8 @@ func main() {
 	api.DELETE("/room/:id", closeRoomHandler)
 	api.PATCH("/room/:room/:user", updatePermissionHandler)
 
-	// e.Static("/", "audon-fe/dist/assets")
+	e.Static("/assets", "audon-fe/dist/assets")
+	e.File("/*", "audon-fe/dist/index.html")
 
 	e.Logger.Debug(e.Start(":1323"))
 }

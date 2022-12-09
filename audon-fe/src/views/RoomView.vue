@@ -10,14 +10,9 @@ import {
   mdiPhoneRemove,
   mdiMicrophoneQuestion,
   mdiDoorClosed,
-  mdiVolumeOff
+  mdiVolumeOff,
 } from "@mdi/js";
-import {
-  Room,
-  RoomEvent,
-  Track,
-  DisconnectReason,
-} from "livekit-client";
+import { Room, RoomEvent, Track, DisconnectReason } from "livekit-client";
 import { login } from "masto";
 
 export default {
@@ -90,7 +85,7 @@ export default {
       const myInfo = this.donStore.userinfo;
       if (!myInfo) return false;
 
-      return this.isCohost({remote_id: myInfo.id , remote_url: myInfo.url});
+      return this.isCohost({ remote_id: myInfo.id, remote_url: myInfo.url });
     },
     micStatusIcon() {
       if (!this.micGranted) {
@@ -160,7 +155,7 @@ export default {
             if (!room.canPlaybackAudio) {
               // FIXME: popup a dialog to ask user to allow audio playback
               // alert("autoplay not permitted");
-              self.autoplayDisabled = true
+              self.autoplayDisabled = true;
             }
           })
           .on(RoomEvent.Disconnected, (reason) => {
@@ -207,17 +202,23 @@ export default {
           }
         }
       } catch (error) {
-        if (error.response?.status === 404) {
-          pushNotFound(this.$route);
-        } else if (error.response?.status === 406) {
-          alert(
-            "他のデバイスで入室済みです。切断された場合はしばらく待ってからやり直してください。"
-          );
-          this.$router.push({ name: "home" });
-        } else {
-          // FIXME: error handling
-          alert(error);
-          this.$router.push({ name: "home" });
+        switch (error.response?.status) {
+          case 404:
+            pushNotFound(this.$route);
+            break;
+          case 406:
+            alert(
+              "他のデバイスで入室済みです。切断された場合はしばらく待ってからやり直してください。"
+            );
+            this.$router.push({ name: "home" });
+            break;
+          case 410:
+            alert("この部屋はすでに閉じられています。");
+            this.$router.push({ name: "home" });
+            break;
+          default:
+            alert(error);
+            this.$router.push({ name: "home" });
         }
       } finally {
         this.loading = false;
@@ -309,7 +310,7 @@ export default {
         alert("接続できませんでした。退室します。");
         await this.roomClient.disconnect();
       }
-    }
+    },
   },
 };
 </script>
@@ -317,7 +318,9 @@ export default {
 <template>
   <v-dialog v-model="autoplayDisabled" max-width="500" persistent>
     <v-alert color="indigo">
-      <div class="mb-5">ブラウザの設定により無音になっています。続行するには「視聴を始める」ボタンを押してください。</div>
+      <div class="mb-5">
+        ブラウザの設定により無音になっています。続行するには「視聴を始める」ボタンを押してください。
+      </div>
       <div class="text-center mb-3">
         <v-btn color="gray" @click="onStartListening">視聴を始める</v-btn>
       </div>

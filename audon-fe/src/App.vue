@@ -1,5 +1,5 @@
 <script setup>
-import { RouterView } from 'vue-router'
+import { RouterView, RouterLink } from 'vue-router'
 </script>
 
 <template>
@@ -7,7 +7,7 @@ import { RouterView } from 'vue-router'
     <v-system-bar window>
       <v-row>
         <v-col class="text-center">
-          <h2>Audon</h2>
+          <h2><RouterLink :to="{name: 'home'}" style="text-decoration: inherit; color: inherit;">Audon</RouterLink></h2>
         </v-col>
       </v-row>
       <div style="position:fixed">v0.1.0-dev</div>

@@ -1,9 +1,18 @@
 <script>
-import { mdiArrowLeft, mdiMagnify, mdiClose, mdiPlus } from "@mdi/js";
+import {
+  mdiArrowLeft,
+  mdiMagnify,
+  mdiClose,
+  mdiPlus,
+  mdiClipboardCheck,
+  mdiClipboardEdit,
+  mdiMastodon,
+} from "@mdi/js";
 import { useVuelidate } from "@vuelidate/core";
+import { useClipboard } from "@vueuse/core";
 import { useMastodonStore } from "../stores/mastodon";
 import { helpers, required } from "@vuelidate/validators";
-import { debounce, some, map } from "lodash-es";
+import { debounce, some, map, truncate, trim } from "lodash-es";
 import { login } from "masto";
 import { webfinger } from "../assets/utils";
 import axios from "axios";
@@ -13,6 +22,7 @@ export default {
     return {
       v$: useVuelidate(),
       donStore: useMastodonStore(),
+      clipboard: useClipboard(),
     };
   },
   created() {
@@ -23,6 +33,9 @@ export default {
   },
   data() {
     return {
+      mdiMastodon,
+      mdiClipboardCheck,
+      mdiClipboardEdit,
       mdiArrowLeft,
       mdiMagnify,
       mdiClose,
@@ -37,6 +50,7 @@ export default {
         { title: "フォロワー限定", value: "follower" },
         { title: "フォローまたはフォロワー限定", value: "knows" },
         { title: "相互フォロー限定", value: "mutual" },
+        { title: "非公開", value: "private" },
       ],
       scheduledAt: null,
       searchResult: null,
@@ -49,6 +63,7 @@ export default {
         colour: "",
       },
       isSubmissionLoading: false,
+      createdRoomID: "",
     };
   },
   validations() {
@@ -63,6 +78,25 @@ export default {
       const errors = this.v$.title.$errors;
       const messages = map(errors, (e) => e.$message);
       return messages;
+    },
+    isDialogActive() {
+      return this.createdRoomID !== "";
+    },
+    roomURL() {
+      const url = new URL(window.location.href);
+      return `${url.origin}/r/${this.createdRoomID}`;
+    },
+    shareURL() {
+      const donURL = this.donStore.userinfo?.url;
+      if (!donURL) return "";
+      const url = new URL(donURL);
+      const texts = [
+        `Audon で部屋を作りました！\n視聴リンク： ${this.roomURL}`,
+        `タイトル：${this.title}`,
+      ];
+      if (this.description)
+        texts.push(truncate(this.description, { length: 200 }));
+      return encodeURI(`${url.origin}/share?text=${texts.join("\n\n")}`);
     },
   },
   watch: {
@@ -115,8 +149,13 @@ export default {
       this.searchResult = null;
       this.searchQuery = "";
     },
+    onShareClick() {
+      window.open(this.shareURL, "Audon Share", "width=400,height=600");
+    },
     webfinger,
     async onSubmit() {
+      this.title = trim(this.title);
+      this.description = trim(this.description);
       const isFormCorrect = await this.v$.$validate();
       if (!isFormCorrect) {
         return;
@@ -133,7 +172,8 @@ export default {
       try {
         const resp = await axios.post("/api/room", payload);
         if (resp.status === 201) {
-          this.$router.push({ name: "room", params: { id: resp.data } });
+          this.createdRoomID = resp.data;
+          // this.$router.push({ name: "room", params: { id: resp.data } });
         }
       } catch (error) {
         this.searchError.message = `Error: ${error}`;
@@ -148,6 +188,47 @@ export default {
 </script>
 
 <template>
+  <v-dialog v-model="isDialogActive" persistent max-width="700">
+    <v-alert
+      type="success"
+      color="blue-gray"
+      title="お部屋の用意ができました！"
+    >
+      <div>
+        {{ title }} を作りました。参加者に以下の URL を共有してください。
+      </div>
+      <div class="my-3">
+        <h3 style="word-break: break-all;">{{ roomURL }}</h3>
+      </div>
+      <div>
+        <v-btn
+          :prepend-icon="mdiMastodon"
+          class="mr-3"
+          @click="onShareClick"
+          color="#563ACC"
+          size="small"
+          >シェア</v-btn
+        >
+        <v-btn
+          @click="clipboard.copy(roomURL)"
+          color="lime"
+          size="small"
+          :prepend-icon="
+            clipboard.copied.value ? mdiClipboardCheck : mdiClipboardEdit
+          "
+          >{{ clipboard.copied.value ? "コピーしました" : "コピー" }}</v-btn
+        >
+      </div>
+      <div class="text-center mt-10 mb-1">
+        <v-btn
+          color="indigo"
+          :to="{ name: 'room', params: { id: createdRoomID } }"
+          size="large"
+          >入室</v-btn
+        >
+      </div>
+    </v-alert>
+  </v-dialog>
   <main>
     <div>
       <v-btn class="ma-2" variant="text" color="blue" :to="{ name: 'home' }">

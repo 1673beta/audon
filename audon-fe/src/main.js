@@ -49,10 +49,11 @@ router.beforeEach(async (to) => {
     }
   }
 });
-router.afterEach((to) => {
+router.afterEach((to, from) => {
   const donStore = useMastodonStore();
   if (!to.meta.noauth && !donStore.authorized) {
-    router.push({ name: "login" }); // need to push in afterEach to get nonempty lastPath in LoginView.vue
+    const query = to.name !== "home" ? {l: to.path} : {};
+    router.push({ name: "login", query }); // need to push in afterEach to get nonempty lastPath in LoginView.vue
   } else if (to.name === "login" && donStore.authorized) {
     router.replace({ name: "home" });
   }
