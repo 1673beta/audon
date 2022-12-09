@@ -39,20 +39,22 @@ axios.interceptors.response.use(undefined, (error) => {
 });
 router.beforeEach(async (to) => {
   const donStore = useMastodonStore();
-  if (!to.meta.noauth && !donStore.authorized) {
+  if ((!to.meta.noauth || to.name === "login") && !donStore.authorized) {
     try {
-      await donStore.fetchToken();
+      if (!donStore.client) await donStore.fetchToken();
     } catch (error) {
       if (error.response?.status === 401) {
         donStore.$reset();
       }
     }
   }
-})
+});
 router.afterEach((to) => {
   const donStore = useMastodonStore();
   if (!to.meta.noauth && !donStore.authorized) {
     router.push({ name: "login" }); // need to push in afterEach to get nonempty lastPath in LoginView.vue
+  } else if (to.name === "login" && donStore.authorized) {
+    router.replace({ name: "home" });
   }
 });
 

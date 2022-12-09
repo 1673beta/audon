@@ -15,13 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type (
-	TokenResponse struct {
-		Url   string `json:"url"`
-		Token string `json:"token"`
-	}
-)
-
 // handler for POST to /api/room
 func createRoomHandler(c echo.Context) error {
 	room := new(Room)
@@ -143,8 +136,9 @@ func joinRoomHandler(c echo.Context) (err error) {
 	}
 
 	resp := &TokenResponse{
-		Url:   mainConfig.Livekit.URL.String(),
-		Token: token,
+		Url:     mainConfig.Livekit.URL.String(),
+		Token:   token,
+		AudonID: user.AudonID,
 	}
 
 	// Create room in LiveKit if it doesn't exist

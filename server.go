@@ -123,6 +123,7 @@ func main() {
 	e.POST("/app/login", loginHandler)
 	e.GET("/app/oauth", oauthHandler)
 	e.GET("/app/verify", verifyHandler)
+	e.POST("/app/logout", logoutHandler)
 
 	e.POST("/app/webhook", livekitWebhookHandler)
 

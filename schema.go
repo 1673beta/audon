@@ -39,6 +39,12 @@ type (
 		EndedAt       time.Time    `bson:"ended_at" json:"ended_at"`
 		CreatedAt     time.Time    `bson:"created_at" json:"created_at"`
 	}
+
+	TokenResponse struct {
+		Url     string `json:"url"`
+		Token   string `json:"token"`
+		AudonID string `json:"audon_id"`
+	}
 )
 
 const (

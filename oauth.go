@@ -173,9 +173,32 @@ func getOAuthTokenHandler(c echo.Context) (err error) {
 	}
 
 	return c.JSON(http.StatusOK, &TokenResponse{
-		Url:   data.MastodonConfig.Server,
-		Token: data.MastodonConfig.AccessToken,
+		Url:     data.MastodonConfig.Server,
+		Token:   data.MastodonConfig.AccessToken,
+		AudonID: data.AudonID,
 	})
+}
+
+func logoutHandler(c echo.Context) (err error) {
+	data, err := getSessionData(c)
+	if err == nil && data.AudonID != "" {
+		mastoURL, err := url.Parse(data.MastodonConfig.Server)
+		if err != nil {
+			return ErrInvalidRequestFormat
+		}
+		mastoURL = mastoURL.JoinPath("oauth", "revoke")
+		formValues := url.Values{}
+		formValues.Add("client_id", data.MastodonConfig.ClientID)
+		formValues.Add("client_secret", data.MastodonConfig.ClientSecret)
+		formValues.Add("token", data.MastodonConfig.AccessToken)
+		resp, err := http.PostForm(mastoURL.String(), formValues)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			return c.NoContent(http.StatusOK)
+		}
+		return echo.NewHTTPError(http.StatusBadRequest)
+	}
+
+	return echo.NewHTTPError(http.StatusUnauthorized, "login_required")
 }
 
 func authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {

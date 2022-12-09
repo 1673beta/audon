@@ -8,7 +8,11 @@ export const useMastodonStore = defineStore("mastodon", {
   state() {
     return {
       authorized: false,
-      oauth: null,
+      oauth: {
+        url: "",
+        token: "",
+        audon_id: "",
+      },
       client: null,
       userinfo: null,
     };

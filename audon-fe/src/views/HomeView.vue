@@ -1,6 +1,7 @@
 <script>
-import { RouterLink } from "vue-router";
 import { useMastodonStore } from "../stores/mastodon";
+import { mdiLogout } from "@mdi/js";
+import axios from "axios";
 
 export default {
   setup() {
@@ -10,15 +11,44 @@ export default {
   },
   data() {
     return {
-      query: ""
-    }
-  }
+      mdiLogout,
+      query: "",
+    };
+  },
+  methods: {
+    async onLogout() {
+      if (!confirm("Audon からログアウトしますか？")) return;
+
+      try {
+        const resp = await axios.post("/app/logout");
+        if (resp.status === 200) {
+          this.donStore.$reset();
+          this.$router.push({ name: "login" });
+        }
+      } catch (error) {
+        console.log(error);
+      } finally {
+        this.donStore.$reset();
+        this.$router.push({ name: "login" });
+      }
+    },
+  },
 };
 </script>
 
 <template>
   <main>
-    <div class="text-center my-10" >
+    <div class="text-right">
+      <v-btn
+        :append-icon="mdiLogout"
+        variant="outlined"
+        color="red"
+        @click="onLogout"
+      >
+        ログアウト
+      </v-btn>
+    </div>
+    <div class="text-center my-10">
       <v-avatar class="rounded" size="100">
         <v-img
           :src="donStore.userinfo?.avatar"
@@ -38,7 +68,7 @@ export default {
         <v-text-field v-mode="query"></v-text-field>
       </v-col> -->
       <v-col cols="12">
-        <v-btn block :to="{name: 'create'}" color="indigo">部屋を作成</v-btn>
+        <v-btn block :to="{ name: 'create' }" color="indigo">部屋を作成</v-btn>
       </v-col>
     </v-row>
   </main>
