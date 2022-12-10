@@ -26,7 +26,7 @@ import {
 import { login } from "masto";
 
 const publishOpts = {
-  // audioBitrate: AudioPresets.musicStereo,
+  audioBitrate: AudioPresets.music,
   // forceStereo: true,
 };
 
