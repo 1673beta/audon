@@ -53,6 +53,8 @@ services:
     env_file:
       - .env.production
     restart: unless-stopped
+    ports:
+      - "8100:8100"
     depends_on:
       - db
       - redis
