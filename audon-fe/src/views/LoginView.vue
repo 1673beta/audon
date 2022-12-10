@@ -76,7 +76,7 @@ export default {
     <v-text-field
       v-model="server"
       name="server"
-      label="Mastodon / Pleroma サーバー"
+      label="Mastodon サーバー"
       placeholder="mastodon.example"
       class="mb-2"
       :error-messages="serverErrors"
