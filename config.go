@@ -17,9 +17,8 @@ type (
 	}
 
 	AppConfigBase struct {
-		SeesionSecret string `validate:"required,ascii"`
-		LocalDomain   string `validate:"required,hostname|hostname_port"`
-		Environment   string `validate:"printascii"`
+		LocalDomain string `validate:"required,hostname|hostname_port"`
+		Environment string `validate:"printascii"`
 	}
 
 	LivekitConfig struct {
@@ -71,12 +70,8 @@ func loadConfig(envname string) (*AppConfig, error) {
 
 	// Setup base config
 	basicConf := AppConfigBase{
-		SeesionSecret: os.Getenv("SESSION_SECRET"),
-		LocalDomain:   os.Getenv("LOCAL_DOMAIN"),
-		Environment:   envname,
-	}
-	if basicConf.SeesionSecret == "" {
-		basicConf.SeesionSecret = "dev"
+		LocalDomain: os.Getenv("LOCAL_DOMAIN"),
+		Environment: envname,
 	}
 	if err := mainValidator.Struct(&basicConf); err != nil {
 		return nil, err
