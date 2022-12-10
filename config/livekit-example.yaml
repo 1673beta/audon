@@ -1,0 +1,67 @@
+# main TCP port for RoomService and RTC endpoint
+# for production setups, this port should be placed behind a load balancer with TLS
+port: 7880
+
+rtc:
+  # when set, LiveKit enable WebRTC ICE over TCP when UDP isn't available
+  # this port *cannot* be behind load balancer or TLS, and must be exposed on the node
+  # WebRTC transports are encrypted and do not require additional encryption
+  # only 80/443 on public IP are allowed if less than 1024
+  tcp_port: 7881
+  # UDP ports to use for client traffic.
+  # this port range should be open for inbound traffic on the firewall
+  port_range_start: 50000
+  port_range_end: 60000
+  # when set to true, attempts to discover the host's public IP via STUN
+  # this is useful for cloud environments such as AWS & Google where hosts have an internal IP
+  # that maps to an external one
+  use_external_ip: true
+
+redis:
+  address: redis:6379
+  db: 1
+
+turn:
+  enabled: true
+  domain: livekit-turn.example.com
+  # optional (set only if not using external TLS termination)
+  # cert_file: ""
+  # key_file: ""
+  # defaults to 5349 - if not using a load balancer, this must be set to 443
+  tls_port: 5349
+  # defaults to 3478 - recommended to 443 if not running HTTP3/QUIC server
+  # only 53/80/443 are allowed if less than 1024
+  # use h3://*** in Caddyfile if you use caddy as load balancer
+  udp_port: 3478
+  # set external_tl to true if using a L4 load balancer to terminate TLS. when enabled,
+  # LiveKit expects unencrypted traffic on tls_port, and still advertise tls_port as a TURN/TLS candidate.
+  external_tls: true
+
+keys:
+  # devkey: secret
+
+webhook:
+  # api_key: devkey
+  urls:
+    - https://audon.example.com/app/webhook
+
+room:
+  # allow rooms to be automatically created when participants join, defaults to true
+  auto_create: false
+  # number of seconds to leave a room open when it's empty
+  empty_timeout: 300
+  # limit number of participants that can be in a room, 0 for no limit
+  max_participants: 0
+  # limit size of room and participant's metadata, 0 for no limit
+  max_metadata_size: 0
+
+audio:
+  # minimum level to be considered active, 0-127, where 0 is loudest
+  # # defaults to 30
+  active_level: 60
+  # percentile to measure, a participant is considered active if it has exceeded the
+  # ActiveLevel more than MinPercentile% of the time
+  # # defaults to 40
+  min_percentile: 20
+  # frequency in ms to notify changes to clients, defaults to 500
+  update_interval: 200

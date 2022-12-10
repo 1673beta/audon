@@ -37,9 +37,9 @@ type (
 )
 
 var (
-	mastAppConfigBase   *mastodon.AppConfig = nil
-	mainDB              *mongo.Database     = nil
-	mainValidator                           = validator.New()
+	// mastAppConfigBase   *mastodon.AppConfig = nil
+	mainDB              *mongo.Database = nil
+	mainValidator                       = validator.New()
 	mainConfig          *AppConfig
 	lkRoomServiceClient *lksdk.RoomServiceClient
 )
@@ -52,10 +52,13 @@ func init() {
 func main() {
 	var err error
 
+	log.Println("Audon server started.")
+
 	// Load config from environment variables and .env
+	log.Println("Reading .env files")
 	mainConfig, err = loadConfig(os.Getenv("AUDON_ENV"))
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("Failed reading .env files: %s\n", err.Error())
 	}
 
 	// Setup Livekit RoomService Client
@@ -65,18 +68,19 @@ func main() {
 	}
 	lkRoomServiceClient = lksdk.NewRoomServiceClient(lkURL.String(), mainConfig.Livekit.APIKey, mainConfig.Livekit.APISecret)
 
-	backContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	backContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	// Setup database client
+	log.Println("Connecting to DB")
 	dbClient, err := mongo.Connect(backContext, options.Client().ApplyURI(mainConfig.MongoURL.String()))
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("Failed connecting to DB: %s\n", err.Error())
 	}
 	mainDB = dbClient.Database(mainConfig.Database.Name)
 	err = createIndexes(backContext)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("Failed creating indexes: %s\n", err.Error())
 	}
 
 	// Setup redis client
@@ -91,16 +95,13 @@ func main() {
 	e := echo.New()
 	defer e.Close()
 
-	t := &Template{
-		templates: template.Must(template.ParseFiles("audon-fe/index.html", "audon-fe/dist/index.html")),
-	}
-	e.Renderer = t
 	e.Validator = &CustomValidator{validator: mainValidator}
 
 	// Setup session middleware (currently Audon stores all client data in cookie)
+	log.Println("Connecting to Redis")
 	redisStore, err := redisstore.NewRedisStore(backContext, redisClient)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("Failed connecting to Redis: %s\n", err.Error())
 	}
 	redisStore.KeyPrefix("session_")
 	sessionOptions := sessions.Options{
@@ -140,8 +141,8 @@ func main() {
 
 	// use anonymous func to support graceful shutdown
 	go func() {
-		if err := e.Start(":1323"); err != nil && err != http.ErrServerClosed {
-			e.Logger.Fatal("shutting down the server")
+		if err := e.Start(":8100"); err != nil && err != http.ErrServerClosed {
+			e.Logger.Fatalf("Shutting down the server: %s\n", err.Error())
 		}
 	}()
 
@@ -154,7 +155,7 @@ func main() {
 	e.Logger.Print("Attempting graceful shutdown")
 	defer shutdownCancel()
 	if err := e.Shutdown(shutdownCtx); err != nil {
-		e.Logger.Fatal(err)
+		e.Logger.Fatalf("Failed shutting down gracefully: %s\n", err.Error())
 	}
 }
 

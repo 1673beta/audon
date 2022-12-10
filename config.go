@@ -54,9 +54,12 @@ func loadConfig(envname string) (*AppConfig, error) {
 		envname = "development"
 	}
 
-	// Set values in .env files to environment variables
-	if err := godotenv.Load(".env." + envname + ".local"); err != nil {
-		return nil, err
+	// Loads environment variables in .env files if they exist
+	localEnv := ".env." + envname + ".local"
+	if _, err := os.Stat(localEnv); err == nil {
+		if err := godotenv.Load(localEnv); err != nil {
+			return nil, err
+		}
 	}
 	if _, err := os.Stat(".env"); err == nil {
 		if err := godotenv.Load(".env"); err != nil {
@@ -120,7 +123,7 @@ func loadConfig(envname string) (*AppConfig, error) {
 		return nil, err
 	}
 	lkURL := &url.URL{
-		Scheme: "https",
+		Scheme: "wss",
 		Host:   lkConf.LocalDomain,
 	}
 	lkConf.URL = lkURL
