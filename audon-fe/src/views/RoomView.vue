@@ -448,7 +448,7 @@ export default {
       </div>
     </v-alert>
   </v-dialog>
-  <v-dialog persistent v-model="showRequestDialog" max-width="500">
+  <v-dialog v-model="showRequestDialog" max-width="500">
     <v-card max-height="600" class="d-flex flex-column">
       <v-card-title>通話リクエスト</v-card-title>
       <v-card-text class="flex-grow-1 overflow-auto py-0">
