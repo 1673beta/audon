@@ -58,6 +58,7 @@ services:
     depends_on:
       - db
       - redis
+      - livekit
 
   # redisinsight:
   #  image: redislabs/redisinsight:latest
