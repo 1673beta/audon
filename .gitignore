@@ -185,3 +185,6 @@ dist
 # Ignore all config files
 config/*
 !config/*.sample.*
+# Ignore data directories
+mongo/
+redis/
