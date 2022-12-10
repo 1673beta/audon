@@ -26,8 +26,8 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     command: redis-server /etc/redis.conf
-    # ports:
-    #   - 6379:6379
+    ports:
+      - "127.0.0.1:6379:6379"
     volumes:
       - ./redis:/data
       - ./config/redis.conf:/etc/redis.conf
@@ -36,12 +36,7 @@ services:
     image: livekit/livekit-server:v1.3
     command: --config /etc/livekit.yaml
     restart: unless-stopped
-    # network_mode: "host"
-    ports:
-      - "7881:7881/tcp"
-      - "50000-60000:50000-60000/udp"
-      - "5349:5349/tcp"
-      - "3478:3478/udp"
+    network_mode: "host"
     depends_on:
       - redis
     volumes:
@@ -54,7 +49,7 @@ services:
       - .env.production
     restart: unless-stopped
     ports:
-      - "8100:8100"
+      - "127.0.0.1:8100:8100"
     depends_on:
       - db
       - redis

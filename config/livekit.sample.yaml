@@ -18,7 +18,7 @@ rtc:
   use_external_ip: true
 
 redis:
-  address: redis:6379
+  address: 127.0.0.1:6379
   db: 1
 
 turn:
