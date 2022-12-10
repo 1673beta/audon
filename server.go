@@ -119,7 +119,7 @@ func main() {
 		Domain:   mainConfig.LocalDomain,
 		MaxAge:   86400 * 30,
 		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteDefaultMode,
 		Secure:   true,
 	}
 	if mainConfig.Environment == "development" {
