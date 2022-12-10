@@ -9,6 +9,7 @@ export const validators = {
 };
 
 export function webfinger(user) {
+  if (!user) return "";
   const url = new URL(user.url);
   return `${user.acct}@${url.host}`;
 }

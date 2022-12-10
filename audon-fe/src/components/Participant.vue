@@ -14,21 +14,26 @@ export default {
     }
   },
   computed: {
-    isHostOrCohost() {
-      return this.type === "host" || this.type === "cohost";
+    canSpeak() {
+      return this.type === "host" || this.type === "cohost" || this.type === "speaker";
     },
     badgeProps() {
       switch (this.type) {
         case "host":
           return {
             content: "Host",
-            colour: "primary",
+            colour: "deep-orange",
           };
         case "cohost":
           return {
             content: "Cohost",
-            colour: "secondary",
+            colour: "indigo",
           };
+        case "speaker":
+          return {
+            content: "Speaker",
+            colour: ""
+          }
         default:
           return {
             content: "",
@@ -43,7 +48,7 @@ export default {
 <template>
   <v-col sm="3" cols="4" class="text-center">
     <v-badge
-      v-if="isHostOrCohost"
+      v-if="canSpeak"
       :content="badgeProps.content"
       location="top"
       :color="badgeProps.colour"
@@ -59,8 +64,8 @@ export default {
     >
       <v-img :src="data?.avatar"></v-img>
     </v-avatar>
-    <h4 :class="isHostOrCohost ? 'mt-1' : 'mt-2'">
-      <v-icon v-if="isHostOrCohost" :icon="muted ? mdiMicrophoneOff : mdiMicrophone"></v-icon>
+    <h4 :class="canSpeak ? 'mt-1' : 'mt-2'">
+      <v-icon v-if="canSpeak" :icon="muted ? mdiMicrophoneOff : mdiMicrophone"></v-icon>
       <a :href="data?.url" target="_blank">{{ data?.displayName }}</a>
     </h4>
   </v-col>

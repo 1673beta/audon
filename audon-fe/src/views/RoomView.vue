@@ -1,8 +1,8 @@
 <script>
 import axios from "axios";
-import { pushNotFound } from "../assets/utils";
+import { pushNotFound, webfinger } from "../assets/utils";
 import { useMastodonStore } from "../stores/mastodon";
-import { map, some, omit } from "lodash-es";
+import { map, some, omit, filter } from "lodash-es";
 import Participant from "../components/Participant.vue";
 import {
   mdiMicrophone,
@@ -11,14 +11,25 @@ import {
   mdiMicrophoneQuestion,
   mdiDoorClosed,
   mdiVolumeOff,
+  mdiClose,
+  mdiCheck,
+  mdiAccountVoice,
 } from "@mdi/js";
-import { Room, RoomEvent, Track, DisconnectReason } from "livekit-client";
+import {
+  Room,
+  RoomEvent,
+  Track,
+  DisconnectReason,
+  DataPacket_Kind,
+} from "livekit-client";
 import { login } from "masto";
 
 export default {
   setup() {
     return {
       donStore: useMastodonStore(),
+      decoder: new TextDecoder(),
+      encoder: new TextEncoder(),
     };
   },
   components: {
@@ -26,12 +37,15 @@ export default {
   },
   data() {
     return {
+      mdiAccountVoice,
       mdiMicrophone,
       mdiMicrophoneOff,
       mdiPhoneRemove,
       mdiMicrophoneQuestion,
       mdiDoorClosed,
       mdiVolumeOff,
+      mdiClose,
+      mdiCheck,
       roomID: this.$route.params.id,
       loading: false,
       mainHeight: 600,
@@ -41,6 +55,7 @@ export default {
         description: "",
         host: null,
         cohosts: [],
+        speakers: [],
         createdAt: null,
       },
       participants: {},
@@ -49,6 +64,10 @@ export default {
       mutedSpeakerIDs: new Set(),
       micGranted: false,
       autoplayDisabled: false,
+      speakRequests: new Set(),
+      showRequestNotification: false,
+      showRequestDialog: false,
+      showRequestedNotification: false,
     };
   },
   created() {
@@ -70,7 +89,7 @@ export default {
     iamMuted() {
       const myAudonID = this.donStore.oauth.audon_id;
       return (
-        (this.iamHost || this.iamCohost) &&
+        (this.iamHost || this.iamCohost || this.iamSpeaker) &&
         this.micGranted &&
         this.mutedSpeakerIDs.has(myAudonID)
       );
@@ -87,6 +106,12 @@ export default {
 
       return this.isCohost({ remote_id: myInfo.id, remote_url: myInfo.url });
     },
+    iamSpeaker() {
+      const myAudonID = this.donStore.oauth.audon_id;
+      if (!myAudonID) return false;
+
+      return this.isSpeaker(myAudonID);
+    },
     micStatusIcon() {
       if (!this.micGranted) {
         return mdiMicrophoneQuestion;
@@ -98,6 +123,7 @@ export default {
     },
   },
   methods: {
+    webfinger,
     async joinRoom() {
       if (!this.donStore.authorized) return;
       this.loading = true;
@@ -153,8 +179,6 @@ export default {
           })
           .on(RoomEvent.AudioPlaybackStatusChanged, () => {
             if (!room.canPlaybackAudio) {
-              // FIXME: popup a dialog to ask user to allow audio playback
-              // alert("autoplay not permitted");
               self.autoplayDisabled = true;
             }
           })
@@ -177,6 +201,47 @@ export default {
               alert(message);
             }
             self.$router.push({ name: "home" });
+          })
+          .on(RoomEvent.DataReceived, (payload, participant, kind) => {
+            try {
+              /* data should be like
+              { "kind": "speak_request" }
+              { "kind": "chat", "data": "..." }
+              { "kind": "request_declined", "audon_id": "..."}
+              */
+              const strData = self.decoder.decode(payload);
+              const jsonData = JSON.parse(strData);
+              const metadata = JSON.parse(participant.metadata);
+              switch (jsonData?.kind) {
+                case "speak_request": // someone is wanting to be a speaker
+                  self.onSpeakRequestReceived(participant);
+                  break;
+                case "request_declined":
+                  if (
+                    self.isHost(participant.identity) ||
+                    self.isCohost(metadata)
+                  ) {
+                    self.speakRequests.delete(jsonData.audon_id);
+                  }
+                  break;
+              }
+            } catch (error) {
+              console.log(
+                "invalida data received from: ",
+                participant.identity
+              );
+            }
+          })
+          .on(RoomEvent.RoomMetadataChanged, (metadata) => {
+            self.roomInfo = JSON.parse(metadata);
+            for (const speakers of self.roomInfo.speakers) {
+              self.speakRequests.delete(speakers.audon_id);
+            }
+            if (self.iamSpeaker || !self.micGranted) {
+              self.roomClient.localParticipant.setMicrophoneEnabled(true).then((v) => {
+                self.micGranted = true;
+              })
+            }
           });
         await room.connect(resp.data.url, resp.data.token);
         this.roomClient = room;
@@ -194,7 +259,7 @@ export default {
             this.fetchMastoData(key, value);
           }
         }
-        if (this.iamHost || this.iamCohost) {
+        if (this.iamHost || this.iamCohost || this.iamSpeaker) {
           try {
             await room.localParticipant.setMicrophoneEnabled(true);
           } catch {
@@ -241,6 +306,59 @@ export default {
         })
       );
     },
+    isSpeaker(identity) {
+      return identity && some(this.roomInfo.speakers, { audon_id: identity });
+    },
+    isTalking(identity) {
+      return (
+        this.activeSpeakerIDs.has(identity) &&
+        !this.mutedSpeakerIDs.has(identity)
+      );
+    },
+    onSpeakRequestReceived(participant) {
+      if (this.iamHost || this.iamCohost) {
+        if (this.speakRequests.has(participant.identity)) return;
+        this.speakRequests.add(participant.identity);
+        this.showRequestNotification = true;
+      }
+    },
+    async onAcceptRequest(identity) {
+      // promote user to a speaker
+      // the livekit server will update room metadata
+      try {
+        await axios.put(`/api/room/${this.roomID}/${identity}`);
+      } catch (reqError) {
+        console.log("permission update request error: ", reqError);
+      }
+    },
+    async onDeclineRequest(identity) {
+      // share declined identity with host and other cohosts
+      if (!this.speakRequests.delete(identity)) return;
+      const data = { kind: "request_declined", audon_id: identity };
+      await this.publishDataToHostAndCohosts(data);
+    },
+    async requestSpeak() {
+      if (confirm("通話をリクエストしますか？")) {
+        await this.publishDataToHostAndCohosts({ kind: "speak_request" });
+        this.showRequestedNotification = true;
+      }
+    },
+    async publishDataToHostAndCohosts(data) {
+      const payload = this.encoder.encode(JSON.stringify(data));
+      // participants - speakers
+      const hostandcohosts = filter(
+        Array.from(this.roomClient.participants.values()),
+        (p) => {
+          const metadata = JSON.parse(p.metadata);
+          return this.isHost(p.identity) || this.isCohost(metadata);
+        }
+      );
+      await this.roomClient.localParticipant.publishData(
+        payload,
+        DataPacket_Kind.RELIABLE,
+        hostandcohosts
+      );
+    },
     addParticipant(participant) {
       const metadata = participant.metadata
         ? JSON.parse(participant.metadata)
@@ -276,7 +394,7 @@ export default {
       const myTrack = this.roomClient.localParticipant.getTrack(
         Track.Source.Microphone
       );
-      if (this.iamHost || this.iamCohost) {
+      if (this.iamHost || this.iamCohost || this.iamSpeaker) {
         try {
           if (!this.micGranted) {
             await this.roomClient.localParticipant.setMicrophoneEnabled(true);
@@ -289,7 +407,8 @@ export default {
           alert("ブラウザが録音を許可していません");
         }
       } else {
-        alert("リクエストはアップデートで実装予定です！");
+        // alert("リクエストはアップデートで実装予定です！");
+        this.requestSpeak();
       }
     },
     async onRoomClose() {
@@ -329,6 +448,97 @@ export default {
       </div>
     </v-alert>
   </v-dialog>
+  <v-dialog persistent v-model="showRequestDialog" max-width="500">
+    <v-card max-height="600" class="d-flex flex-column">
+      <v-card-title>通話リクエスト</v-card-title>
+      <v-card-text class="flex-grow-1 overflow-auto py-0">
+        <v-list v-if="speakRequests.size > 0" lines="two" variant="tonal">
+          <v-list-item
+            v-for="id of Array.from(speakRequests)"
+            :key="id"
+            :title="cachedMastoData[id]?.displayName"
+            class="my-1"
+            rounded
+          >
+            <template v-slot:prepend>
+              <v-avatar class="rounded">
+                <v-img :src="cachedMastoData[id]?.avatar"></v-img>
+              </v-avatar>
+            </template>
+            <template v-slot:append>
+              <v-btn
+                class="mr-2"
+                size="small"
+                variant="text"
+                :icon="mdiCheck"
+                @click="onAcceptRequest(id)"
+              ></v-btn>
+              <v-btn
+                size="small"
+                variant="text"
+                :icon="mdiClose"
+                @click="onDeclineRequest(id)"
+              ></v-btn>
+            </template>
+            <v-list-item-subtitle>
+              <a
+                :href="cachedMastoData[id]?.url"
+                class="text-body"
+                style="text-decoration: inherit; color: inherit"
+                target="_blank"
+                >{{ webfinger(cachedMastoData[id]) }}</a
+              >
+            </v-list-item-subtitle>
+          </v-list-item>
+        </v-list>
+        <p class="text-center py-3" v-else>リクエストはありません</p>
+      </v-card-text>
+      <v-divider></v-divider>
+      <v-card-actions class="justify-end">
+        <v-btn @click="showRequestDialog = false">閉じる</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+  <v-snackbar
+    location="top"
+    :timeout="5000"
+    v-model="showRequestedNotification"
+    color="info"
+  >
+    <strong>通話リクエストを送信しました！</strong>
+    <template v-slot:actions>
+      <v-btn
+        variant="text"
+        @click="showRequestedNotification = false"
+        :icon="mdiClose"
+        size="small"
+      ></v-btn>
+    </template>
+  </v-snackbar>
+  <v-snackbar
+    location="top"
+    :timeout="-1"
+    v-model="showRequestNotification"
+    color="info"
+  >
+    <div
+      style="cursor: pointer"
+      @click="
+        showRequestDialog = true;
+        showRequestNotification = false;
+      "
+    >
+      <strong>新しい通話リクエストがあります</strong>
+    </div>
+    <template v-slot:actions>
+      <v-btn
+        variant="text"
+        @click="showRequestNotification = false"
+        :icon="mdiClose"
+        size="small"
+      ></v-btn>
+    </template>
+  </v-snackbar>
   <div class="d-none" ref="audioDOM"></div>
   <main class="fill-height" v-resize="onResize">
     <v-card :height="mainHeight" :loading="loading" class="d-flex flex-column">
@@ -361,26 +571,34 @@ export default {
           <template v-for="(value, key) of participants" :key="key">
             <Participant
               v-if="isHost(key)"
-              :talking="activeSpeakerIDs.has(key)"
+              :talking="isTalking(key)"
               type="host"
               :data="cachedMastoData[key]"
               :muted="mutedSpeakerIDs.has(key)"
             ></Participant>
             <Participant
               v-if="isCohost(value)"
-              :talking="activeSpeakerIDs.has(key)"
+              :talking="isTalking(key)"
               type="cohost"
               :data="cachedMastoData[key]"
               :muted="mutedSpeakerIDs.has(key)"
             ></Participant>
+            <Participant
+              v-if="isSpeaker(key)"
+              :talking="isTalking(key)"
+              type="speaker"
+              :data="cachedMastoData[key]"
+              :muted="mutedSpeakerIDs.has(key)"
+            >
+            </Participant>
           </template>
         </v-row>
-        <v-row>
+        <v-row justify="start">
           <template v-for="(value, key) of participants" :key="key">
             <Participant
-              v-if="!isHost(key) && !isCohost(value)"
-              :talking="activeSpeakerIDs.has(key)"
+              v-if="!isHost(key) && !isCohost(value) && !isSpeaker(key)"
               :data="cachedMastoData[key]"
+              type="listener"
             ></Participant>
           </template>
         </v-row>
@@ -399,6 +617,23 @@ export default {
           @click="roomClient.disconnect()"
           variant="flat"
         ></v-btn>
+        <v-badge
+          v-if="iamHost || iamCohost"
+          color="info"
+          :model-value="speakRequests.size > 0"
+          :content="speakRequests.size"
+        >
+          <v-btn
+            :icon="mdiAccountVoice"
+            variant="flat"
+            color="white"
+            @click="
+              showRequestDialog = true;
+              showRequestNotification = false;
+            "
+          >
+          </v-btn>
+        </v-badge>
       </v-card-actions>
     </v-card>
   </main>

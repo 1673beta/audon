@@ -239,6 +239,8 @@ export default {
         v-model="searchError.enabled"
         color="error"
         :timeout="searchError.timeout"
+        position="sticky"
+        location="top"
       >
         {{ searchError.message }}
       </v-snackbar>
@@ -276,8 +278,8 @@ export default {
             ></v-text-field>
             <v-card class="mt-3" variant="outlined">
               <v-card-title class="text-subtitle-1">共同ホスト</v-card-title>
-              <v-card-text v-if="cohosts.length > 0 || searchResult">
-                <div v-if="cohosts.length > 0">
+              <v-card-text v-if="cohosts.length > 0 || searchResult" class="py-0">
+                <template v-if="cohosts.length > 0">
                   <v-list lines="two" variant="tonal">
                     <v-list-item
                       v-for="(cohost, index) in cohosts"
@@ -308,8 +310,8 @@ export default {
                       </template>
                     </v-list-item>
                   </v-list>
-                </div>
-                <div v-if="searchResult">
+                </template>
+                <template v-if="searchResult">
                   <v-divider></v-divider>
                   <v-list lines="two">
                     <v-list-item
@@ -335,7 +337,7 @@ export default {
                       </v-list-item-subtitle>
                     </v-list-item>
                   </v-list>
-                </div>
+                </template>
               </v-card-text>
               <v-card-actions>
                 <v-text-field

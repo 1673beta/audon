@@ -56,6 +56,9 @@ func loginHandler(c echo.Context) (err error) {
 			Scheme: "https",
 			Path:   "/",
 		}
+		if req.Redirect == "" {
+			req.Redirect = "/"
+		}
 
 		appConfig, err := getAppConfig(serverURL.String(), req.Redirect)
 		if err != nil {
@@ -103,15 +106,15 @@ func oauthHandler(c echo.Context) (err error) {
 		}
 		return echo.NewHTTPError(http.StatusBadRequest, "auth_code_required")
 	}
-	if req.Redirect == "" {
-		req.Redirect = "/"
-	}
+	// if req.Redirect == "" {
+	// 	req.Redirect = "/"
+	// }
 
 	data, err := getSessionData(c)
 	if err != nil {
 		return err
 	}
-	appConf, err := getAppConfig(data.MastodonConfig.Server, "/")
+	appConf, err := getAppConfig(data.MastodonConfig.Server, req.Redirect)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}

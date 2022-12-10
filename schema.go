@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/livekit/protocol/livekit"
@@ -25,16 +26,21 @@ type (
 		CreatedAt time.Time `bson:"created_at" json:"created_at"`
 	}
 
+	RoomMetadata struct {
+		*Room
+		Speakers []*AudonUser `json:"speakers"`
+	}
+
 	Room struct {
 		RoomID        string       `bson:"room_id" json:"room_id" validate:"required,printascii"`
 		Title         string       `bson:"title" json:"title" validate:"required,max=100,printascii|multibyte"`
 		Description   string       `bson:"description" json:"description" validate:"max=500,ascii|multibyte"`
 		Host          *AudonUser   `bson:"host" json:"host"`
-		CoHosts       []*AudonUser `bson:"cohost" json:"cohosts,omitempty"`
+		CoHosts       []*AudonUser `bson:"cohost" json:"cohosts"`
 		FollowingOnly bool         `bson:"following_only" json:"following_only"`
 		FollowerOnly  bool         `bson:"follower_only" json:"follower_only"`
 		MutualOnly    bool         `bson:"mutual_only" json:"mutual_only"`
-		Kicked        []*AudonUser `bson:"kicked" json:"kicked,omitempty"`
+		Kicked        []*AudonUser `bson:"kicked" json:"kicked"`
 		ScheduledAt   time.Time    `bson:"scheduled_at" json:"scheduled_at"`
 		EndedAt       time.Time    `bson:"ended_at" json:"ended_at"`
 		CreatedAt     time.Time    `bson:"created_at" json:"created_at"`
@@ -78,7 +84,25 @@ func (r *Room) IsHost(u *AudonUser) bool {
 	return r != nil && r.Host.Equal(u)
 }
 
+func getRoomMetadataFromLivekitRoom(lkRoom *livekit.Room) (*RoomMetadata, error) {
+	metadata := new(RoomMetadata)
+	if err := json.Unmarshal([]byte(lkRoom.GetMetadata()), metadata); err != nil {
+		return nil, err
+	}
+
+	return metadata, nil
+}
+
+func (r *Room) ExistsInLivekit(ctx context.Context) bool {
+	lkRooms, _ := lkRoomServiceClient.ListRooms(ctx, &livekit.ListRoomsRequest{Names: []string{r.RoomID}})
+
+	return len(lkRooms.GetRooms()) > 0
+}
+
 func (r *Room) IsUserInLivekitRoom(ctx context.Context, userID string) bool {
+	if r == nil {
+		return false
+	}
 	participantsInfo, _ := lkRoomServiceClient.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: r.RoomID})
 	participants := participantsInfo.GetParticipants()
 

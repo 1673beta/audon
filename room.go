@@ -129,7 +129,24 @@ func joinRoomHandler(c echo.Context) (err error) {
 		}
 	}
 
-	token, err := getRoomToken(room, user, room.IsHost(user) || room.IsCoHost(user)) // host and cohost can talk from the beginning
+	canTalk := room.IsHost(user) || room.IsCoHost(user) // host and cohost can talk from the beginning
+	roomMetadata := &RoomMetadata{Room: room}
+
+	// Allows the user to talk if the user is a speaker
+	lkRoom, _ := getRoomInLivekit(c.Request().Context(), room.RoomID) // lkRoom will be nil if it doesn't exist
+	if lkRoom != nil {
+		if existingMetadata, _ := getRoomMetadataFromLivekitRoom(lkRoom); existingMetadata != nil {
+			roomMetadata = existingMetadata
+			for _, speaker := range existingMetadata.Speakers {
+				if speaker.AudonID == user.AudonID {
+					canTalk = true
+					break
+				}
+			}
+		}
+	}
+
+	token, err := getRoomToken(room, user, canTalk)
 	if err != nil {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
@@ -142,15 +159,16 @@ func joinRoomHandler(c echo.Context) (err error) {
 	}
 
 	// Create room in LiveKit if it doesn't exist
-	metadata, _ := json.Marshal(room)
-
-	_, err = lkRoomServiceClient.CreateRoom(c.Request().Context(), &livekit.CreateRoomRequest{
-		Name:     room.RoomID,
-		Metadata: string(metadata),
-	})
-	if err != nil {
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusConflict)
+	metadata, _ := json.Marshal(roomMetadata)
+	if lkRoom == nil {
+		_, err = lkRoomServiceClient.CreateRoom(c.Request().Context(), &livekit.CreateRoomRequest{
+			Name:     room.RoomID,
+			Metadata: string(metadata),
+		})
+		if err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusConflict)
+		}
 	}
 
 	return c.JSON(http.StatusOK, resp)
@@ -194,14 +212,13 @@ func closeRoomHandler(c echo.Context) error {
 func updatePermissionHandler(c echo.Context) error {
 	roomID := c.Param("room")
 
-	// look up room in livekit
-	room, exists := getRoomInLivekit(c.Request().Context(), roomID)
+	// look up lkRoom in livekit
+	lkRoom, exists := getRoomInLivekit(c.Request().Context(), roomID)
 	if !exists {
 		return ErrRoomNotFound
 	}
 
-	audonRoom := new(Room)
-	err := json.Unmarshal([]byte(room.Metadata), audonRoom)
+	lkRoomMetadata, err := getRoomMetadataFromLivekitRoom(lkRoom)
 	if err != nil {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
@@ -209,25 +226,56 @@ func updatePermissionHandler(c echo.Context) error {
 
 	iam := c.Get("user").(*AudonUser)
 
-	if !(audonRoom.IsHost(iam) || audonRoom.IsCoHost(iam)) {
+	if !(lkRoomMetadata.IsHost(iam) || lkRoomMetadata.IsCoHost(iam)) {
 		return ErrOperationNotPermitted
 	}
 
 	tgtAudonID := c.Param("user")
-
-	if !audonRoom.IsUserInLivekitRoom(c.Request().Context(), tgtAudonID) {
+	if !lkRoomMetadata.IsUserInLivekitRoom(c.Request().Context(), tgtAudonID) {
 		return ErrUserNotFound
 	}
+	tgtUser, err := findUserByID(c.Request().Context(), tgtAudonID)
+	if err != nil {
+		return ErrUserNotFound
+	}
+	if lkRoomMetadata.IsHost(tgtUser) || lkRoomMetadata.IsCoHost(tgtUser) {
+		return ErrOperationNotPermitted
+	}
 
-	permission := new(livekit.ParticipantPermission)
-	if err := c.Bind(permission); err != nil {
-		return ErrInvalidRequestFormat
+	newPermission := &livekit.ParticipantPermission{
+		CanPublishData: true,
+		CanSubscribe:   true,
+	}
+
+	// promote user to a speaker
+	if c.Request().Method == http.MethodPut {
+		newPermission.CanPublish = true
+		for _, speaker := range lkRoomMetadata.Speakers {
+			if speaker.Equal(tgtUser) {
+				return echo.NewHTTPError(http.StatusConflict, "already_speaking")
+			}
+		}
+		lkRoomMetadata.Speakers = append(lkRoomMetadata.Speakers, tgtUser)
+	}
+
+	newMetadata, err := json.Marshal(lkRoomMetadata)
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	_, err = lkRoomServiceClient.UpdateRoomMetadata(c.Request().Context(), &livekit.UpdateRoomMetadataRequest{
+		Room:     roomID,
+		Metadata: string(newMetadata),
+	})
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
 	info, err := lkRoomServiceClient.UpdateParticipant(c.Request().Context(), &livekit.UpdateParticipantRequest{
 		Room:       roomID,
 		Identity:   tgtAudonID,
-		Permission: permission,
+		Permission: newPermission,
 	})
 	if err != nil {
 		c.Logger().Error(err)

@@ -132,12 +132,12 @@ func main() {
 	api.POST("/room", createRoomHandler)
 	api.GET("/room/:id", joinRoomHandler)
 	api.DELETE("/room/:id", closeRoomHandler)
-	api.PATCH("/room/:room/:user", updatePermissionHandler)
+	api.PUT("/room/:room/:user", updatePermissionHandler)
 
 	e.Static("/assets", "audon-fe/dist/assets")
 	e.File("/*", "audon-fe/dist/index.html")
 
-	e.Logger.Debug(e.Start(":1323"))
+	e.Logger.Debug(e.Start(":8100"))
 }
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
@@ -152,16 +152,19 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 }
 
 func getAppConfig(server string, redirPath string) (*mastodon.AppConfig, error) {
-	if mastAppConfigBase != nil {
-		return &mastodon.AppConfig{
-			Server:       server,
-			ClientName:   mastAppConfigBase.ClientName,
-			Scopes:       mastAppConfigBase.Scopes,
-			Website:      mastAppConfigBase.Website,
-			RedirectURIs: mastAppConfigBase.RedirectURIs,
-		}, nil
-	}
+	// if mastAppConfigBase != nil {
+	// 	return &mastodon.AppConfig{
+	// 		Server:       server,
+	// 		ClientName:   mastAppConfigBase.ClientName,
+	// 		Scopes:       mastAppConfigBase.Scopes,
+	// 		Website:      mastAppConfigBase.Website,
+	// 		RedirectURIs: mastAppConfigBase.RedirectURIs,
+	// 	}, nil
+	// }
 
+	if redirPath == "" {
+		redirPath = "/"
+	}
 	redirectURI := "urn:ietf:wg:oauth:2.0:oob"
 	u := &url.URL{
 		Host:   mainConfig.LocalDomain,
@@ -181,7 +184,7 @@ func getAppConfig(server string, redirPath string) (*mastodon.AppConfig, error) 
 		RedirectURIs: redirectURI,
 	}
 
-	mastAppConfigBase = conf
+	// mastAppConfigBase = conf
 
 	return &mastodon.AppConfig{
 		Server:       server,

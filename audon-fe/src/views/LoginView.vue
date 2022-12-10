@@ -30,9 +30,6 @@ export default {
     };
   },
   computed: {
-    lastPath() {
-      return this.$route.query.l ?? "";
-    },
     serverErrors() {
       const errors = this.v$.server.$errors;
       const messages = map(errors, (e) => e.$message);
@@ -50,7 +47,7 @@ export default {
       }
       try {
         const response = await axios.postForm("/app/login", {
-          redir: this.lastPath,
+          redir: this.$route.query.l ?? "/",
           server: this.server,
         });
         if (response.status === 201) {
