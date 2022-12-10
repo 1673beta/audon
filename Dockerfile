@@ -27,7 +27,9 @@ COPY --from=1 /workspace/audon-bin /audon/
 
 RUN apt-get update && \
     echo "Etc/UTC" > /etc/localtime && \
-    apt-get -y --no-install-recommends install tini
+    apt-get -y --no-install-recommends install tini \
+    tzdata \
+    ca-certificates
 
 ENV AUDON_ENV=production
 
