@@ -21,8 +21,22 @@ import {
   Track,
   DisconnectReason,
   DataPacket_Kind,
+  AudioPresets,
 } from "livekit-client";
 import { login } from "masto";
+
+const publishOpts = {
+  // audioBitrate: AudioPresets.musicStereo,
+  // forceStereo: true,
+};
+
+const captureOpts = {
+  // autoGainControl: false,
+  // echoCancellation: false,
+  // sampleRate: 48000,
+  // sampleSize: 16,
+  // channelCount: 2
+};
 
 export default {
   setup() {
@@ -238,9 +252,11 @@ export default {
               self.speakRequests.delete(speakers.audon_id);
             }
             if (self.iamSpeaker || !self.micGranted) {
-              self.roomClient.localParticipant.setMicrophoneEnabled(true).then((v) => {
-                self.micGranted = true;
-              })
+              self.roomClient.localParticipant
+                .setMicrophoneEnabled(true, captureOpts, publishOpts)
+                .then((v) => {
+                  self.micGranted = true;
+                });
             }
           });
         await room.connect(resp.data.url, resp.data.token);
@@ -261,7 +277,11 @@ export default {
         }
         if (this.iamHost || this.iamCohost || this.iamSpeaker) {
           try {
-            await room.localParticipant.setMicrophoneEnabled(true);
+            await room.localParticipant.setMicrophoneEnabled(
+              true,
+              captureOpts,
+              publishOpts
+            );
           } catch {
             alert("ブラウザが録音を許可していません");
           }
@@ -397,10 +417,16 @@ export default {
       if (this.iamHost || this.iamCohost || this.iamSpeaker) {
         try {
           if (!this.micGranted) {
-            await this.roomClient.localParticipant.setMicrophoneEnabled(true);
+            await this.roomClient.localParticipant.setMicrophoneEnabled(
+              true,
+              captureOpts,
+              publishOpts
+            );
           } else if (myTrack) {
             await this.roomClient.localParticipant.setMicrophoneEnabled(
-              myTrack.isMuted
+              myTrack.isMuted,
+              captureOpts,
+              publishOpts
             );
           }
         } catch {

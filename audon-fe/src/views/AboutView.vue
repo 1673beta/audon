@@ -17,9 +17,10 @@ export default {
 
 <template>
   <div class="about">
-    <h1>This is an about page</h1>
-    <RouterLink :to="{ name: 'login' }">Login</RouterLink>
-    <RouterLink :to="{ name: 'home' }">Home</RouterLink>
+    準備中
+    <div>
+      <RouterLink :to="{ name: 'home' }">Home</RouterLink>
+    </div>
   </div>
 </template>
 
