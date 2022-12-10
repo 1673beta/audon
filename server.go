@@ -58,10 +58,10 @@ func main() {
 	log.Println("Audon server started.")
 
 	// Load config from environment variables and .env
-	log.Println("Reading .env files")
+	log.Println("Loading Audon config values")
 	mainConfig, err = loadConfig(os.Getenv("AUDON_ENV"))
 	if err != nil {
-		log.Fatalf("Failed reading .env files: %s\n", err.Error())
+		log.Fatalf("Failed loading config values: %s\n", err.Error())
 	}
 
 	// Setup Livekit RoomService Client

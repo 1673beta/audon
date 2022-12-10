@@ -103,7 +103,6 @@ web_modules/
 .env.production.local
 .env.local
 .env.production
-!.env.*.example
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -185,4 +184,4 @@ dist
 ### Audon ###
 # Ignore all config files
 config/*
-!config/*-example.*
+!config/*.sample.*
