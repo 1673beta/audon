@@ -1,4 +1,4 @@
-FROM node:18-bullseye AS build
+FROM node:18-bullseye
 
 WORKDIR /workspace
 
@@ -8,19 +8,30 @@ RUN npm install && npm run build
 
 FROM golang:1.19-bullseye
 
-WORKDIR /audon
+WORKDIR /workspace
 
-COPY --from=build /workspace/dist /audon/audon-fe/dist
-COPY go.mod /audon/go.mod
-COPY go.sum /audon/go.sum
-
+COPY go.mod /workspace/go.mod
+COPY go.sum /workspace/go.sum
 RUN go mod download
 
-COPY *.go /audon/
+COPY *.go /workspace/
 
 RUN go build -a -v -o audon-bin .
 
+FROM debian:bullseye
+
+WORKDIR /audon
+
+COPY --from=0 /workspace/dist /audon/audon-fe/dist
+COPY --from=1 /workspace/audon-bin /audon/
+
+RUN apt-get update && \
+    echo "Etc/UTC" > /etc/localtime && \
+    apt-get -y --no-install-recommends install tini
+
 ENV AUDON_ENV=production
 
-ENTRYPOINT ["/audon/audon-bin"]
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["/audon/audon-bin"]
+
 EXPOSE 8100
