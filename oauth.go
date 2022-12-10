@@ -66,6 +66,7 @@ func loginHandler(c echo.Context) (err error) {
 		}
 		mastApp, err := mastodon.RegisterApp(c.Request().Context(), appConfig)
 		if err != nil {
+			c.Logger().Error(err)
 			return echo.NewHTTPError(http.StatusNotFound, "server_not_found")
 		}
 
