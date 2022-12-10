@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base32"
 	"encoding/gob"
 	"html/template"
 	"io"
@@ -10,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -103,6 +106,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed connecting to Redis: %s\n", err.Error())
 	}
+	redisStore.KeyGen(func() (string, error) {
+		k := make([]byte, 64)
+		if _, err := rand.Read(k); err != nil {
+			return "", err
+		}
+		return strings.TrimRight(base32.StdEncoding.EncodeToString(k), "="), nil
+	})
 	redisStore.KeyPrefix("session_")
 	sessionOptions := sessions.Options{
 		Path:     "/",
