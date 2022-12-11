@@ -7,13 +7,13 @@ import Participant from "../components/Participant.vue";
 import {
   mdiMicrophone,
   mdiMicrophoneOff,
-  mdiPhoneRemove,
   mdiMicrophoneQuestion,
   mdiDoorClosed,
   mdiVolumeOff,
   mdiClose,
   mdiCheck,
   mdiAccountVoice,
+  mdiLogout
 } from "@mdi/js";
 import {
   Room,
@@ -51,10 +51,10 @@ export default {
   },
   data() {
     return {
+      mdiLogout,
       mdiAccountVoice,
       mdiMicrophone,
       mdiMicrophoneOff,
-      mdiPhoneRemove,
       mdiMicrophoneQuestion,
       mdiDoorClosed,
       mdiVolumeOff,
@@ -358,7 +358,7 @@ export default {
       await this.publishDataToHostAndCohosts(data);
     },
     async requestSpeak() {
-      if (confirm("通話をリクエストしますか？")) {
+      if (confirm("発言をリクエストしますか？")) {
         await this.publishDataToHostAndCohosts({ kind: "speak_request" });
         this.showRequestedNotification = true;
       }
@@ -476,7 +476,7 @@ export default {
   </v-dialog>
   <v-dialog v-model="showRequestDialog" max-width="500">
     <v-card max-height="600" class="d-flex flex-column">
-      <v-card-title>通話リクエスト</v-card-title>
+      <v-card-title>発言リクエスト</v-card-title>
       <v-card-text class="flex-grow-1 overflow-auto py-0">
         <v-list v-if="speakRequests.size > 0" lines="two" variant="tonal">
           <v-list-item
@@ -531,7 +531,7 @@ export default {
     v-model="showRequestedNotification"
     color="info"
   >
-    <strong>通話リクエストを送信しました！</strong>
+    <strong>発言リクエストを送信しました！</strong>
     <template v-slot:actions>
       <v-btn
         variant="text"
@@ -554,7 +554,7 @@ export default {
         showRequestNotification = false;
       "
     >
-      <strong>新しい通話リクエストがあります</strong>
+      <strong>新しい発言リクエストがあります</strong>
     </div>
     <template v-slot:actions>
       <v-btn
@@ -588,7 +588,7 @@ export default {
         style="height: 100px"
       >
         <v-container class="py-0">
-          <pre class="text-body-1">{{ roomInfo.description }}</pre>
+          <p style="white-space: pre-wrap;">{{ roomInfo.description }}</p>
         </v-container>
       </div>
       <v-divider></v-divider>
@@ -638,7 +638,7 @@ export default {
           @click="onToggleMute"
         ></v-btn>
         <v-btn
-          :icon="mdiPhoneRemove"
+          :icon="mdiLogout"
           color="red"
           @click="roomClient.disconnect()"
           variant="flat"

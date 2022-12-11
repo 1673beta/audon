@@ -10,7 +10,7 @@ import { RouterView, RouterLink } from 'vue-router'
           <h2><RouterLink :to="{name: 'home'}" style="text-decoration: inherit; color: inherit;">Audon</RouterLink></h2>
         </v-col>
       </v-row>
-      <div style="position:fixed">v0.1.0-dev</div>
+      <div style="position:fixed">v0.1.0-dev2</div>
     </v-system-bar>
     <v-main>
       <v-container class="fill-height">

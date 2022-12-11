@@ -1,5 +1,6 @@
 <script>
 import { mdiMicrophone, mdiMicrophoneOff } from "@mdi/js";
+import { webfinger } from "../assets/utils";
 export default {
   props: {
     talking: Boolean,
@@ -42,6 +43,9 @@ export default {
       }
     },
   },
+  methods: {
+    webfinger
+  }
 };
 </script>
 
@@ -66,7 +70,7 @@ export default {
     </v-avatar>
     <h4 :class="canSpeak ? 'mt-1' : 'mt-2'">
       <v-icon v-if="canSpeak" :icon="muted ? mdiMicrophoneOff : mdiMicrophone"></v-icon>
-      <a :href="data?.url" target="_blank">{{ data?.displayName }}</a>
+      <a :href="data?.url" target="_blank">{{ data?.displayName ?? webfinger(data) }}</a>
     </h4>
   </v-col>
 </template>

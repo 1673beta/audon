@@ -22,6 +22,7 @@ func verifyTokenInSession(c echo.Context) (bool, *mastodon.Account, error) {
 		return false, nil, nil
 	}
 	mastoClient := mastodon.NewClient(data.MastodonConfig)
+	mastoClient.UserAgent = USER_AGENT
 
 	acc, err := mastoClient.GetAccountCurrentUser(c.Request().Context())
 	user, dbErr := findUserByID(c.Request().Context(), data.AudonID)
@@ -64,7 +65,8 @@ func loginHandler(c echo.Context) (err error) {
 		if err != nil {
 			return ErrInvalidRequestFormat
 		}
-		mastApp, err := mastodon.RegisterApp(c.Request().Context(), appConfig)
+		// mastApp, err := mastodon.RegisterApp(c.Request().Context(), appConfig)
+		mastApp, err := registerApp(c.Request().Context(), appConfig)
 		if err != nil {
 			c.Logger().Error(err)
 			return echo.NewHTTPError(http.StatusNotFound, "server_not_found")
@@ -122,6 +124,7 @@ func oauthHandler(c echo.Context) (err error) {
 
 	data.AuthCode = req.Code
 	client := mastodon.NewClient(data.MastodonConfig)
+	client.UserAgent = USER_AGENT
 	err = client.AuthenticateToken(c.Request().Context(), req.Code, appConf.RedirectURIs)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusForbidden, err.Error())

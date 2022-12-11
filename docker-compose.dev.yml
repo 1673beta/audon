@@ -1,0 +1,43 @@
+# Use root/example as user/password credentials
+version: '3.1'
+
+services:
+
+  db:
+    image: mongo:6
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+    # volumes:
+    #   - ./mongo:/data/db
+
+  mongo-express:
+    image: mongo-express
+    restart: unless-stopped
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME:
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:mongo@db:27017/
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server
+    ports:
+      - "6379:6379"
+    # volumes:
+    #   - ./redis:/data
+    #   - ./config/redis.conf:/etc/redis.conf
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    restart: unless-stopped
+    ports:
+      - 8001:8001
+  #  volumes:
+  #    - redisinsight:/db

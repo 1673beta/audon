@@ -1,6 +1,5 @@
 <script>
 import { useMastodonStore } from "../stores/mastodon";
-import { mdiLogout } from "@mdi/js";
 import axios from "axios";
 
 export default {
@@ -11,7 +10,6 @@ export default {
   },
   data() {
     return {
-      mdiLogout,
       query: "",
     };
   },
@@ -40,7 +38,6 @@ export default {
   <main>
     <div class="text-right">
       <v-btn
-        :append-icon="mdiLogout"
         variant="outlined"
         color="red"
         @click="onLogout"

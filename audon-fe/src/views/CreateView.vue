@@ -91,7 +91,7 @@ export default {
       if (!donURL) return "";
       const url = new URL(donURL);
       const texts = [
-        `Audon で部屋を作りました！\n視聴リンク： ${this.roomURL}`,
+        `Audon で部屋を作りました！\n参加用リンク: ${this.roomURL}`,
         `タイトル：${this.title}`,
       ];
       if (this.description)
