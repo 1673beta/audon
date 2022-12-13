@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -198,10 +199,17 @@ func logoutHandler(c echo.Context) (err error) {
 		formValues.Add("client_id", data.MastodonConfig.ClientID)
 		formValues.Add("client_secret", data.MastodonConfig.ClientSecret)
 		formValues.Add("token", data.MastodonConfig.AccessToken)
-		resp, err := http.PostForm(mastoURL.String(), formValues)
+		request, err := http.NewRequest(http.MethodPost, mastoURL.String(), strings.NewReader(formValues.Encode()))
+		if err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+		request.Header.Add("User-Agent", USER_AGENT)
+		resp, err := http.DefaultClient.Do(request)
 		if err == nil && resp.StatusCode == http.StatusOK {
 			return c.NoContent(http.StatusOK)
 		}
+		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
 

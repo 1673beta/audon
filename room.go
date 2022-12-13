@@ -300,7 +300,7 @@ func getRoomToken(room *Room, user *AudonUser, canTalk bool) (string, error) {
 		"remote_url": user.RemoteURL,
 	})
 
-	at.AddGrant(grant).SetIdentity(user.AudonID).SetValidFor(10 * time.Minute).SetMetadata(string(metadata))
+	at.AddGrant(grant).SetIdentity(user.AudonID).SetValidFor(24 * time.Hour).SetMetadata(string(metadata))
 
 	return at.ToJWT()
 }

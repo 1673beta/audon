@@ -77,6 +77,7 @@ func main() {
 	// Setup database client
 	log.Println("Connecting to DB")
 	dbClient, err := mongo.Connect(backContext, options.Client().ApplyURI(mainConfig.MongoURL.String()))
+	defer dbClient.Disconnect(backContext)
 	if err != nil {
 		log.Fatalf("Failed connecting to DB: %s\n", err.Error())
 	}
@@ -106,6 +107,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed connecting to Redis: %s\n", err.Error())
 	}
+	defer redisStore.Close()
 	redisStore.KeyGen(func() (string, error) {
 		k := make([]byte, 64)
 		if _, err := rand.Read(k); err != nil {
