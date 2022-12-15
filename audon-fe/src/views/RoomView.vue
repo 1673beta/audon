@@ -13,7 +13,7 @@ import {
   mdiClose,
   mdiCheck,
   mdiAccountVoice,
-  mdiLogout
+  mdiLogout,
 } from "@mdi/js";
 import {
   Room,
@@ -288,6 +288,30 @@ export default {
         }
       } catch (error) {
         switch (error.response?.status) {
+          case 403:
+            let message = "";
+            switch (error.response?.data) {
+              case "following":
+                message = "この部屋はホストのフォロー限定です。";
+                break;
+              case "follower":
+                message = "この部屋はホストのフォロワー限定です。";
+                break;
+              case "knowing":
+                message =
+                  "この部屋はホストのフォローまたはフォロワー限定です。";
+                break;
+              case "mutual":
+                message = "この部屋はホストの相互フォロー限定です。";
+                break;
+              case "private":
+                message = "この部屋は共同ホスト限定です。";
+                break;
+              default:
+                message = "入室が許可されていません。";
+            }
+            alert(message);
+            break;
           case 404:
             pushNotFound(this.$route);
             break;
@@ -295,16 +319,14 @@ export default {
             alert(
               "他のデバイスで入室済みです。切断された場合はしばらく待ってからやり直してください。"
             );
-            this.$router.push({ name: "home" });
             break;
           case 410:
             alert("この部屋はすでに閉じられています。");
-            this.$router.push({ name: "home" });
             break;
           default:
             alert(error);
-            this.$router.push({ name: "home" });
         }
+        this.$router.push({ name: "home" });
       } finally {
         this.loading = false;
       }
@@ -588,7 +610,7 @@ export default {
         style="height: 100px"
       >
         <v-container class="py-0">
-          <p style="white-space: pre-wrap;">{{ roomInfo.description }}</p>
+          <p style="white-space: pre-wrap">{{ roomInfo.description }}</p>
         </v-container>
       </div>
       <v-divider></v-divider>

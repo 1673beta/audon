@@ -161,7 +161,7 @@ func joinRoomHandler(c echo.Context) (err error) {
 			(room.IsFollowerOnly() && !rel.Following) ||
 			(room.IsFollowingOrFollowerOnly() && !(rel.FollowedBy || rel.Following)) ||
 			(room.IsMutualOnly() && !(rel.FollowedBy && rel.Following)) {
-			return ErrOperationNotPermitted
+			return c.String(http.StatusForbidden, string(room.Restriction))
 		}
 	}
 
