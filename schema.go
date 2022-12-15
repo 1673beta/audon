@@ -23,6 +23,7 @@ type (
 		AudonID   string    `bson:"audon_id" json:"audon_id" validate:"alphanum"`
 		RemoteID  string    `bson:"remote_id" json:"remote_id" validate:"printascii"`
 		RemoteURL string    `bson:"remote_url" json:"remote_url" validate:"url"`
+		Webfinger string    `bson:"webfinger" jsong:"webfinger" validate:"email"`
 		CreatedAt time.Time `bson:"created_at" json:"created_at"`
 	}
 
@@ -32,18 +33,16 @@ type (
 	}
 
 	Room struct {
-		RoomID        string       `bson:"room_id" json:"room_id" validate:"required,printascii"`
-		Title         string       `bson:"title" json:"title" validate:"required,max=100,printascii|multibyte"`
-		Description   string       `bson:"description" json:"description" validate:"max=500,ascii|multibyte"`
-		Host          *AudonUser   `bson:"host" json:"host"`
-		CoHosts       []*AudonUser `bson:"cohost" json:"cohosts"`
-		FollowingOnly bool         `bson:"following_only" json:"following_only"`
-		FollowerOnly  bool         `bson:"follower_only" json:"follower_only"`
-		MutualOnly    bool         `bson:"mutual_only" json:"mutual_only"`
-		Kicked        []*AudonUser `bson:"kicked" json:"kicked"`
-		ScheduledAt   time.Time    `bson:"scheduled_at" json:"scheduled_at"`
-		EndedAt       time.Time    `bson:"ended_at" json:"ended_at"`
-		CreatedAt     time.Time    `bson:"created_at" json:"created_at"`
+		RoomID      string          `bson:"room_id" json:"room_id" validate:"required,printascii"`
+		Title       string          `bson:"title" json:"title" validate:"required,max=100,printascii|multibyte"`
+		Description string          `bson:"description" json:"description" validate:"max=500,ascii|multibyte"`
+		Host        *AudonUser      `bson:"host" json:"host"`
+		CoHosts     []*AudonUser    `bson:"cohost" json:"cohosts"`
+		Restriction JoinRestriction `bsong:"restriction" json:"restriction"`
+		Kicked      []*AudonUser    `bson:"kicked" json:"kicked"`
+		ScheduledAt time.Time       `bson:"scheduled_at" json:"scheduled_at"`
+		EndedAt     time.Time       `bson:"ended_at" json:"ended_at"`
+		CreatedAt   time.Time       `bson:"created_at" json:"created_at"`
 	}
 
 	TokenResponse struct {
@@ -53,9 +52,17 @@ type (
 	}
 )
 
+type JoinRestriction string
+
 const (
 	COLLECTION_USER = "user"
 	COLLECTION_ROOM = "room"
+
+	FOLLOWING             JoinRestriction = "following"
+	FOLLOWER              JoinRestriction = "follower"
+	FOLLOWING_OR_FOLLOWER JoinRestriction = "knowing"
+	MUTUAL                JoinRestriction = "mutual"
+	PRIVATE               JoinRestriction = "private"
 )
 
 func (a *AudonUser) Equal(u *AudonUser) bool {
@@ -64,6 +71,26 @@ func (a *AudonUser) Equal(u *AudonUser) bool {
 	}
 
 	return a.AudonID == u.AudonID || (a.RemoteID == u.RemoteID && a.RemoteURL == u.RemoteURL)
+}
+
+func (r *Room) IsFollowingOnly() bool {
+	return r.Restriction == FOLLOWING
+}
+
+func (r *Room) IsFollowerOnly() bool {
+	return r.Restriction == FOLLOWER
+}
+
+func (r *Room) IsFollowingOrFollowerOnly() bool {
+	return r.Restriction == FOLLOWING_OR_FOLLOWER
+}
+
+func (r *Room) IsMutualOnly() bool {
+	return r.Restriction == MUTUAL
+}
+
+func (r *Room) IsPrivate() bool {
+	return r.Restriction == PRIVATE
 }
 
 func (r *Room) IsCoHost(u *AudonUser) bool {

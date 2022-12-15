@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -19,11 +20,13 @@ func verifyTokenInSession(c echo.Context) (bool, *mastodon.Account, error) {
 		return false, nil, err
 	}
 
-	if data.MastodonConfig.AccessToken == "" {
+	mastoClient, err := getMastodonClient(c)
+	if err != nil {
+		return false, nil, err
+	}
+	if mastoClient == nil {
 		return false, nil, nil
 	}
-	mastoClient := mastodon.NewClient(data.MastodonConfig)
-	mastoClient.UserAgent = USER_AGENT
 
 	acc, err := mastoClient.GetAccountCurrentUser(c.Request().Context())
 	user, dbErr := findUserByID(c.Request().Context(), data.AudonID)
@@ -146,10 +149,12 @@ func oauthHandler(c echo.Context) (err error) {
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 		data.AudonID = id.String()
+		acctUrl, _ := url.Parse(acc.URL)
 		newUser := AudonUser{
 			AudonID:   data.AudonID,
 			RemoteID:  string(acc.ID),
 			RemoteURL: acc.URL,
+			Webfinger: fmt.Sprintf("%s@%s", acc.Username, acctUrl.Host),
 			CreatedAt: time.Now().UTC(),
 		}
 		if _, insertErr := coll.InsertOne(c.Request().Context(), newUser); insertErr != nil {

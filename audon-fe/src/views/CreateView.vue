@@ -46,11 +46,11 @@ export default {
       relationship: "everyone",
       relOptions: [
         { title: "制限なし", value: "everyone" },
-        { title: "フォロー限定", value: "following" },
-        { title: "フォロワー限定", value: "follower" },
-        { title: "フォローまたはフォロワー限定", value: "knows" },
-        { title: "相互フォロー限定", value: "mutual" },
-        { title: "非公開", value: "private" },
+        { title: "あなたのフォロー限定", value: "following" },
+        { title: "あなたのフォロワー限定", value: "follower" },
+        { title: "あなたのフォローまたはフォロワー限定", value: "knowing" },
+        { title: "あなたの相互フォロー限定", value: "mutual" },
+        { title: "共同ホスト限定", value: "private" },
       ],
       scheduledAt: null,
       searchResult: null,
@@ -167,6 +167,7 @@ export default {
           remote_id: u.id,
           remote_url: u.url,
         })),
+        restriction: this.relationship
       };
       this.isSubmissionLoading = false;
       try {
@@ -266,8 +267,7 @@ export default {
               :items="relOptions"
               label="入室制限"
               v-model="relationship"
-              disabled
-              :messages="['今後のアップデートで追加予定']"
+              :messages="['共同ホストは制限に関わらず入室できます']"
             ></v-select>
             <v-text-field
               type="datetime-local"

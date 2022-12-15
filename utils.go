@@ -9,6 +9,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/labstack/echo/v4"
 	mastodon "github.com/mattn/go-mastodon"
 )
 
@@ -70,4 +71,15 @@ func registerApp(ctx context.Context, appConfig *mastodon.AppConfig) (*mastodon.
 	app.AuthURI = u.String()
 
 	return &app, nil
+}
+
+func getMastodonClient(c echo.Context) (*mastodon.Client, error) {
+	data, err := getSessionData(c)
+	if err != nil || data.MastodonConfig.AccessToken == "" {
+		return nil, err
+	}
+	mastoClient := mastodon.NewClient(data.MastodonConfig)
+	mastoClient.UserAgent = USER_AGENT
+
+	return mastoClient, nil
 }

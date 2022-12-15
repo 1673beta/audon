@@ -130,6 +130,41 @@ func joinRoomHandler(c echo.Context) (err error) {
 	}
 
 	canTalk := room.IsHost(user) || room.IsCoHost(user) // host and cohost can talk from the beginning
+
+	// check room restriction
+	if room.IsPrivate() && !canTalk {
+		return ErrOperationNotPermitted
+	}
+	if !canTalk && (room.IsFollowingOnly() || room.IsFollowerOnly() || room.IsFollowingOrFollowerOnly() || room.IsMutualOnly()) {
+		mastoClient, _ := getMastodonClient(c)
+		if mastoClient == nil {
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+		search, err := mastoClient.AccountsSearch(c.Request().Context(), room.Host.Webfinger, 1)
+		if err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+		if len(search) != 1 {
+			return ErrOperationNotPermitted
+		}
+		rels, err := mastoClient.GetAccountRelationships(c.Request().Context(), []string{string(search[0].ID)})
+		if err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+		if len(rels) != 1 {
+			return ErrOperationNotPermitted
+		}
+		rel := rels[0]
+		if (room.IsFollowingOnly() && !rel.FollowedBy) ||
+			(room.IsFollowerOnly() && !rel.Following) ||
+			(room.IsFollowingOrFollowerOnly() && !(rel.FollowedBy || rel.Following)) ||
+			(room.IsMutualOnly() && !(rel.FollowedBy && rel.Following)) {
+			return ErrOperationNotPermitted
+		}
+	}
+
 	roomMetadata := &RoomMetadata{Room: room}
 
 	// Allows the user to talk if the user is a speaker
