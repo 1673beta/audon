@@ -95,12 +95,13 @@ export default {
       if (!donURL) return "";
       const url = new URL(donURL);
       const texts = [
-        `#Audon で部屋を作りました！\n参加用リンク: ${this.roomURL}`,
+        "Audon で部屋を作りました！",
+        `参加用リンク: ${this.roomURL}`,
         `タイトル：${this.title}`,
       ];
       if (this.description)
-        texts.push(truncate(this.description, { length: 200 }));
-      return encodeURI(`${url.origin}/share?text=${texts.join("\n\n")}`);
+        texts.push(truncate("\n" + this.description, { length: 200 }));
+      return encodeURI(`${url.origin}/share?text=${texts.join("\n")}`);
     },
   },
   watch: {
