@@ -16,7 +16,7 @@ RUN go mod download
 
 COPY *.go /workspace/
 
-RUN go build -a -v -o audon-bin .
+RUN go build -v -o audon-bin .
 
 FROM debian:bullseye
 
