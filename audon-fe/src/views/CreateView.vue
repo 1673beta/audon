@@ -96,8 +96,8 @@ export default {
       const url = new URL(donURL);
       const texts = [
         "Audon で部屋を作りました！",
-        `参加用リンク: ${this.roomURL}`,
-        `タイトル：${this.title}`,
+        `参加用リンク： ${this.roomURL}`,
+        `タイトル： ${this.title}`,
       ];
       if (this.description)
         texts.push(truncate("\n" + this.description, { length: 200 }));
