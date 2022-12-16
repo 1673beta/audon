@@ -11,7 +11,7 @@ import {
 import { useVuelidate } from "@vuelidate/core";
 import { useClipboard } from "@vueuse/core";
 import { useMastodonStore } from "../stores/mastodon";
-import { helpers, required } from "@vuelidate/validators";
+import { helpers, maxLength, required } from "@vuelidate/validators";
 import { debounce, some, map, truncate, trim } from "lodash-es";
 import { login } from "masto";
 import { webfinger } from "../assets/utils";
@@ -70,7 +70,11 @@ export default {
     return {
       title: {
         required: helpers.withMessage("部屋の名前を入力してください", required),
+        maxLength: maxLength(100)
       },
+      description: {
+        maxLength: maxLength(500)
+      }
     };
   },
   computed: {
@@ -91,7 +95,7 @@ export default {
       if (!donURL) return "";
       const url = new URL(donURL);
       const texts = [
-        `Audon で部屋を作りました！\n参加用リンク: ${this.roomURL}`,
+        `#Audon で部屋を作りました！\n参加用リンク: ${this.roomURL}`,
         `タイトル：${this.title}`,
       ];
       if (this.description)
@@ -252,6 +256,7 @@ export default {
             <v-text-field
               v-model="title"
               label="タイトル"
+              :counter="100"
               :error-messages="titleErrors"
               required
               @input="v$.title.$touch()"
@@ -262,6 +267,7 @@ export default {
               v-model="description"
               rows="2"
               label="説明"
+              :counter="500"
             ></v-textarea>
             <v-select
               :items="relOptions"
@@ -269,14 +275,7 @@ export default {
               v-model="relationship"
               :messages="['共同ホストは制限に関わらず入室できます']"
             ></v-select>
-            <v-text-field
-              type="datetime-local"
-              v-model="scheduledAt"
-              label="開始予約"
-              disabled
-              :messages="['今後のアップデートで追加予定']"
-            ></v-text-field>
-            <v-card class="mt-3" variant="outlined">
+            <v-card class="my-3" variant="outlined">
               <v-card-title class="text-subtitle-1">共同ホスト</v-card-title>
               <v-card-text v-if="cohosts.length > 0 || searchResult" class="py-0">
                 <template v-if="cohosts.length > 0">
@@ -355,6 +354,13 @@ export default {
                 </v-text-field>
               </v-card-actions>
             </v-card>
+            <v-text-field
+              type="datetime-local"
+              v-model="scheduledAt"
+              label="開始予約"
+              disabled
+              :messages="['今後のアップデートで追加予定']"
+            ></v-text-field>
           </v-form>
         </v-card-text>
         <v-card-actions>

@@ -37,8 +37,8 @@ type (
 		Title       string          `bson:"title" json:"title" validate:"required,max=100,printascii|multibyte"`
 		Description string          `bson:"description" json:"description" validate:"max=500,ascii|multibyte"`
 		Host        *AudonUser      `bson:"host" json:"host"`
-		CoHosts     []*AudonUser    `bson:"cohost" json:"cohosts"`
-		Restriction JoinRestriction `bsong:"restriction" json:"restriction"`
+		CoHosts     []*AudonUser    `bson:"cohosts" json:"cohosts"`
+		Restriction JoinRestriction `bson:"restriction" json:"restriction"`
 		Kicked      []*AudonUser    `bson:"kicked" json:"kicked"`
 		ScheduledAt time.Time       `bson:"scheduled_at" json:"scheduled_at"`
 		EndedAt     time.Time       `bson:"ended_at" json:"ended_at"`

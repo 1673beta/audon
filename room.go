@@ -92,6 +92,67 @@ func createRoomHandler(c echo.Context) error {
 	return c.String(http.StatusCreated, room.RoomID)
 }
 
+type RoomUpdateRequest struct {
+	Title       string          `bson:"title" json:"title" validate:"required,max=100,printascii|multibyte"`
+	Description string          `bson:"description" json:"description" validate:"max=500,ascii|multibyte"`
+	Restriction JoinRestriction `bson:"restriction" json:"restriction"`
+}
+
+func updateRoomHandler(c echo.Context) (err error) {
+	roomID := c.Param("id")
+	if err := mainValidator.Var(&roomID, "required,printascii"); err != nil {
+		return wrapValidationError(err)
+	}
+
+	user := c.Get("user").(*AudonUser)
+
+	var room *RoomMetadata
+	lkRoom, _ := getRoomInLivekit(c.Request().Context(), roomID)
+	if lkRoom != nil {
+		room, _ = getRoomMetadataFromLivekitRoom(lkRoom)
+	} else {
+		dbRoom, err := findRoomByID(c.Request().Context(), roomID)
+		if err != nil {
+			return ErrRoomNotFound
+		}
+		room = new(RoomMetadata)
+		room.Room = dbRoom
+	}
+
+	if !room.IsHost(user) {
+		return ErrOperationNotPermitted
+	}
+
+	req := new(RoomUpdateRequest)
+	if err = c.Bind(req); err != nil {
+		return ErrInvalidRequestFormat
+	}
+	if err = mainValidator.Struct(req); err != nil {
+		return wrapValidationError(err)
+	}
+
+	coll := mainDB.Collection(COLLECTION_ROOM)
+	if _, err = coll.UpdateOne(c.Request().Context(),
+		bson.D{{Key: "room_id", Value: roomID}},
+		bson.D{{Key: "$set", Value: req}}); err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	if lkRoom != nil {
+		room.Title = req.Title
+		room.Description = req.Description
+		room.Restriction = req.Restriction
+		newMetadata, _ := json.Marshal(room)
+		if _, err := lkRoomServiceClient.UpdateRoomMetadata(c.Request().Context(), &livekit.UpdateRoomMetadataRequest{Room: roomID, Metadata: string(newMetadata)}); err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+	}
+
+	return c.JSON(http.StatusOK, room)
+}
+
 func joinRoomHandler(c echo.Context) (err error) {
 	roomID := c.Param("id")
 	if err := mainValidator.Var(&roomID, "required,printascii"); err != nil {
@@ -102,7 +163,7 @@ func joinRoomHandler(c echo.Context) (err error) {
 
 	room, err := findRoomByID(c.Request().Context(), roomID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusNotFound)
+		return ErrRoomNotFound
 	}
 
 	// decline the request if user is already in the room

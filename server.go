@@ -145,6 +145,7 @@ func main() {
 	api.GET("/token", getOAuthTokenHandler)
 	api.POST("/room", createRoomHandler)
 	api.GET("/room/:id", joinRoomHandler)
+	api.PATCH("/room/:id", updateRoomHandler)
 	api.DELETE("/room/:id", closeRoomHandler)
 	api.PUT("/room/:room/:user", updatePermissionHandler)
 

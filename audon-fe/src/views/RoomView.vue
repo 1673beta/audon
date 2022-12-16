@@ -2,7 +2,7 @@
 import axios from "axios";
 import { pushNotFound, webfinger } from "../assets/utils";
 import { useMastodonStore } from "../stores/mastodon";
-import { map, some, omit, filter } from "lodash-es";
+import { map, some, omit, filter, trim, clone } from "lodash-es";
 import Participant from "../components/Participant.vue";
 import {
   mdiMicrophone,
@@ -14,6 +14,8 @@ import {
   mdiCheck,
   mdiAccountVoice,
   mdiLogout,
+  mdiDotsVertical,
+  mdiPencil,
 } from "@mdi/js";
 import {
   Room,
@@ -24,6 +26,8 @@ import {
   AudioPresets,
 } from "livekit-client";
 import { login } from "masto";
+import { useVuelidate } from "@vuelidate/core";
+import { helpers, maxLength, required } from "@vuelidate/validators";
 
 const publishOpts = {
   audioBitrate: AudioPresets.music,
@@ -41,6 +45,7 @@ const captureOpts = {
 export default {
   setup() {
     return {
+      v$: useVuelidate(),
       donStore: useMastodonStore(),
       decoder: new TextDecoder(),
       encoder: new TextEncoder(),
@@ -48,6 +53,22 @@ export default {
   },
   components: {
     Participant,
+  },
+  validations() {
+    return {
+      editingRoomInfo: {
+        title: {
+          required: helpers.withMessage(
+            "部屋の名前を入力してください",
+            required
+          ),
+          maxLength: maxLength(100),
+        },
+        description: {
+          maxLength: maxLength(500),
+        },
+      },
+    };
   },
   data() {
     return {
@@ -60,6 +81,8 @@ export default {
       mdiVolumeOff,
       mdiClose,
       mdiCheck,
+      mdiDotsVertical,
+      mdiPencil,
       roomID: this.$route.params.id,
       loading: false,
       mainHeight: 600,
@@ -67,11 +90,25 @@ export default {
       roomInfo: {
         title: "",
         description: "",
+        restriction: "",
         host: null,
         cohosts: [],
         speakers: [],
         createdAt: null,
       },
+      editingRoomInfo: {
+        title: "",
+        description: "",
+        restriction: "",
+      },
+      relOptions: [
+        { title: "制限なし", value: "everyone" },
+        { title: "あなたのフォロー限定", value: "following" },
+        { title: "あなたのフォロワー限定", value: "follower" },
+        { title: "あなたのフォローまたはフォロワー限定", value: "knowing" },
+        { title: "あなたの相互フォロー限定", value: "mutual" },
+        { title: "共同ホスト限定", value: "private" },
+      ],
       participants: {},
       cachedMastoData: {},
       activeSpeakerIDs: new Set(),
@@ -82,6 +119,8 @@ export default {
       showRequestNotification: false,
       showRequestDialog: false,
       showRequestedNotification: false,
+      isEditLoading: false,
+      showEditDialog: false,
     };
   },
   created() {
@@ -134,6 +173,11 @@ export default {
         return mdiMicrophoneOff;
       }
       return mdiMicrophone;
+    },
+    titleErrors() {
+      const errors = this.v$.editingRoomInfo.title.$errors;
+      const messages = map(errors, (e) => e.$message);
+      return messages;
     },
   },
   methods: {
@@ -248,6 +292,8 @@ export default {
           })
           .on(RoomEvent.RoomMetadataChanged, (metadata) => {
             self.roomInfo = JSON.parse(metadata);
+            self.editingRoomInfo = clone(self.roomInfo);
+            if (!self.roomInfo.speakers) return;
             for (const speakers of self.roomInfo.speakers) {
               self.speakRequests.delete(speakers.audon_id);
             }
@@ -262,6 +308,7 @@ export default {
         await room.connect(resp.data.url, resp.data.token);
         this.roomClient = room;
         this.roomInfo = JSON.parse(room.metadata);
+        this.editingRoomInfo = clone(this.roomInfo);
         this.addParticipant(room.localParticipant);
         for (const part of room.participants.values()) {
           this.addParticipant(part);
@@ -478,11 +525,76 @@ export default {
         await this.roomClient.disconnect();
       }
     },
+    async onEditSubmit() {
+      this.editingRoomInfo.title = trim(this.editingRoomInfo.title);
+      this.editingRoomInfo.description = trim(this.editingRoomInfo.description);
+      const isFormCorrect = await this.v$.$validate();
+      if (!isFormCorrect) {
+        return;
+      }
+
+      this.isEditLoading = true;
+
+      try {
+        const payload = {
+          title: this.editingRoomInfo.title,
+          description: this.editingRoomInfo.description,
+          restriction: this.editingRoomInfo.restriction,
+        };
+        await axios.patch(`/api/room/${this.roomID}`, payload);
+      } catch (error) {
+        alert(error);
+      } finally {
+        this.isEditLoading = false;
+        this.showEditDialog = false;
+      }
+    },
+    clone,
   },
 };
 </script>
 
 <template>
+  <v-dialog v-model="showEditDialog" max-width="500" persistent>
+    <v-card>
+      <v-card-title>部屋の編集</v-card-title>
+      <v-card-text>
+        <v-text-field
+          v-model="editingRoomInfo.title"
+          label="タイトル"
+          :error-messages="titleErrors"
+          :counter="100"
+          required
+          @input="v$.editingRoomInfo.title.$touch()"
+          @blur="v$.editingRoomInfo.title.$touch()"
+        ></v-text-field>
+        <v-textarea
+          auto-grow
+          v-model="editingRoomInfo.description"
+          rows="2"
+          label="説明"
+          :counter="500"
+        ></v-textarea>
+        <v-select
+          :items="relOptions"
+          label="入室制限"
+          v-model="editingRoomInfo.restriction"
+          :messages="['共同ホストは制限に関わらず入室できます']"
+        ></v-select>
+      </v-card-text>
+      <v-divider></v-divider>
+      <v-card-actions class="justify-end">
+        <v-btn
+          @click="
+            showEditDialog = false;
+            editingRoomInfo = clone(roomInfo);
+          "
+          >キャンセル</v-btn
+        >
+        <v-btn @click="onEditSubmit">保存</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
   <v-dialog v-model="autoplayDisabled" max-width="500" persistent>
     <v-alert color="indigo">
       <div class="mb-5">
@@ -590,18 +702,32 @@ export default {
   <div class="d-none" ref="audioDOM"></div>
   <main class="fill-height" v-resize="onResize">
     <v-card :height="mainHeight" :loading="loading" class="d-flex flex-column">
-      <v-card-title class="d-flex justify-space-between">
+      <v-card-title class="d-flex justify-space-between align-center">
         <div>{{ roomInfo.title }}</div>
-        <div>
-          <v-btn
-            v-if="iamHost"
-            :append-icon="mdiDoorClosed"
-            variant="outlined"
-            color="red"
-            @click="onRoomClose"
-          >
-            閉室
-          </v-btn>
+        <div v-if="iamHost">
+          <v-menu>
+            <template v-slot:activator="{ props }">
+              <v-btn
+                size="small"
+                variant="text"
+                color="white"
+                :icon="mdiDotsVertical"
+                v-bind="props"
+              ></v-btn>
+            </template>
+            <v-list>
+              <v-list-item
+                title="編集"
+                :prepend-icon="mdiPencil"
+                @click="showEditDialog = true"
+              ></v-list-item>
+              <v-list-item
+                title="閉室"
+                :prepend-icon="mdiDoorClosed"
+                @click="onRoomClose"
+              ></v-list-item>
+            </v-list>
+          </v-menu>
         </div>
       </v-card-title>
       <div
