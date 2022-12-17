@@ -39,7 +39,7 @@ The followings files need to be configured to run Audon.
 - `.end.production`
 - `config/livekit.yaml`
 
-First, create them by coping the sample files.
+First, create them by copying the sample files.
 
 ```
 cp .env.production.sample .env.production && cp config/livekit.sample.yaml config/livekit.yaml
