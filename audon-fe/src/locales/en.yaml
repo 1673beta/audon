@@ -28,7 +28,7 @@ form:
   description: "Description"
   restriction: "Who can join"
   cohosts: "Cohosts"
-  cohostCanAlwaysJoin: "Cohosts can join regardless of the setting."
+  cohostCanAlwaysJoin: "Cohosts can join regardless of this setting."
   schedule: "Schedule at"
   relationships:
     everyone: "Everyone"
