@@ -80,20 +80,21 @@ The easiest way is to use [Caddy](https://caddyserver.com/) as TLS endpoints. He
 
 ```
 audon.example.com {
-        encode gzip
-        reverse_proxy 127.0.0.1:8100
+    encode gzip
+    reverse_proxy 127.0.0.1:8100
 }
 
 livekit.example.com {
-        reverse_proxy 127.0.0.1:7880
+    reverse_proxy 127.0.0.1:7880
 }
 
 h2://livekit-turn.example.com {
-        reverse_proxy 127.0.0.1:5349
+    reverse_proxy 127.0.0.1:5349
 }
 
 h3://livekit-turn.example.com {
-        reverse_proxy h3://127.0.0.1:3478
+    reverse_proxy h3://127.0.0.1:3478
+}
 ```
 
 You may want to use your own TLS certificates with `tls` directive of Caddyfile.
