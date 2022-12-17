@@ -27,8 +27,8 @@ form:
   titleRequired: "Vous n'avez pas encore choisi un titre pour la salle"
   description: "Ajouter une description"
   restriction: "Qui peut vous joindre :"
-  cohosts: "Cohosts"
-  cohostCanAlwaysJoin: "Cohosts can join regardless of this setting."
+  cohosts: "Cohôtes"
+  cohostCanAlwaysJoin: "Cohôtes peuvent s'y joindre, quel que soit le paramètre de confidentialité."
   schedule: "Programmée à"
   relationships:
     everyone: "Tout le monde"
@@ -36,7 +36,7 @@ form:
     follower: "Vos abonné·e·s"
     knowing: "Vos abonnements et vos abonné·e·s"
     mutual: "Vos mutuels"
-    private: "Seulement vos Cohosts"
+    private: "Seulement vos cohôtes"
 shareRoomMessage: "Venez discuter dans ma salle d'Audon !\n{link}\n\nTitle: {title}"
 roomReady:
   header: "Votre salle est prête !"
@@ -52,7 +52,7 @@ errors:
     follower: "Seul.e.s les abonné·e·s de l'hôte peuvent participer."
     knowing: "Seul.e.s les abonnements et les abonné·e·s de l'hôte peuvent participer."
     mutual: "Seul.e.s les mutuels de l'hôte peuvent participer."
-    private: "Only cohosts can join."
+    private: "Seul.e.s les cohôtes peuvent participer."
     default: "Vous n'êtes pas autorisé à participer."
 startListening: "Commencer à écouter"
 browserMuted: "Votre son est coupé par le navigateur. Appuyez sur @:startListening pour continuer."
