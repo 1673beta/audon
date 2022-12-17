@@ -45,7 +45,7 @@ export default {
     </v-main>
     <v-bottom-navigation :height="30">
       <div class="w-100 d-flex justify-space-between align-center px-3">
-        <div>v0.1.0-dev3</div>
+        <div>v0.1.0-dev4</div>
         <div>
           <select v-model="$i18n.locale" id="localeSelector" @change="onLocaleChange">
             <option
