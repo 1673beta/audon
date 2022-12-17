@@ -28,7 +28,7 @@ These ports are changeable in `config/livekit.yaml`. Please refer to the documen
 ### Requirements
 
 - **Docker** 20.10+
-- **docker-compose** 2.14+
+- **docker-compose** 2.12+
 
 ## Installation Steps
 
