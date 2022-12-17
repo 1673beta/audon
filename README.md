@@ -34,15 +34,16 @@ These ports are changeable in `config/livekit.yaml`. Please refer to the documen
 
 ### Edit Config Files
 
-The followings files need to be configured to run Audon.
+The followings config files are needed to run Audon.
 
 - `.end.production`
 - `config/livekit.yaml`
+- `config/redis.conf`
 
 First, create them by copying the sample files.
 
 ```
-cp .env.production.sample .env.production && cp config/livekit.sample.yaml config/livekit.yaml
+cp .env.production.sample .env.production && cp config/livekit.sample.yaml config/livekit.yaml && cp config/redis.sample.conf config/redis.conf
 ```
 
 Then, create a pair of API key and secret to connect to LiveKit.
