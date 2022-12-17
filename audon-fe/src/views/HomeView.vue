@@ -57,7 +57,7 @@ export default {
         {{ donStore.userinfo?.displayName }}
       </h2>
       <div>
-        <a :href="donStore.userinfo?.url">{{ donStore.myWebfinger }}</a>
+        <a :href="donStore.userinfo?.url" class="plain">{{ donStore.myWebfinger }}</a>
       </div>
     </div>
     <v-row class="text-center" justify="center">

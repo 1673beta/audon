@@ -1,4 +1,11 @@
-html, body, #app {
-    height: 100%;
-    font-family: "Koruri", sans-serif;
+html,
+body,
+#app {
+  height: 100%;
+  font-family: "Koruri", sans-serif;
+}
+
+a.plain {
+  text-decoration: inherit;
+  color: inherit;
 }

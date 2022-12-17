@@ -70,7 +70,7 @@ export default {
     </v-avatar>
     <h4 :class="canSpeak ? 'mt-1' : 'mt-2'">
       <v-icon v-if="canSpeak" :icon="muted ? mdiMicrophoneOff : mdiMicrophone"></v-icon>
-      <a :href="data?.url" target="_blank">{{ data?.displayName ?? webfinger(data) }}</a>
+      <a :href="data?.url" class="plain" target="_blank">{{ data?.displayName ?? webfinger(data) }}</a>
     </h4>
   </v-col>
 </template>
@@ -78,9 +78,5 @@ export default {
 <style scoped>
 .talk {
   outline: 3px solid cornflowerblue;
-}
-a {
-  color: inherit;
-  text-decoration: inherit;
 }
 </style>

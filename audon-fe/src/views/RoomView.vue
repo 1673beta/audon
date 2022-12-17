@@ -643,8 +643,7 @@ export default {
             <v-list-item-subtitle>
               <a
                 :href="cachedMastoData[id]?.url"
-                class="text-body"
-                style="text-decoration: inherit; color: inherit"
+                class="text-body plain"
                 target="_blank"
                 >{{ webfinger(cachedMastoData[id]) }}</a
               >

@@ -22,7 +22,7 @@ export default {
       <h2 class="text-center w-100">
         <RouterLink
           :to="{ name: 'home' }"
-          style="text-decoration: inherit; color: inherit;"
+          class="plain"
           >Audon</RouterLink
         >
       </h2>
@@ -45,7 +45,7 @@ export default {
     </v-main>
     <v-bottom-navigation :height="30">
       <div class="w-100 d-flex justify-space-between align-center px-3">
-        <div>v0.1.0-dev5</div>
+        <div><a href="https://codeberg.org/nmkj/audon" class="plain" target="_blank">v0.1.0-dev5</a></div>
         <div>
           <select v-model="$i18n.locale" id="localeSelector" @change="onLocaleChange">
             <option
