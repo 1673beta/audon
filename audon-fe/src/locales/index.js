@@ -3,5 +3,6 @@
 
 export default {
   en: "English",
-  ja: "日本語"
-}
+  ja: "日本語",
+  fr: "Français",
+};
