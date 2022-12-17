@@ -21,9 +21,9 @@ export default {
   validations() {
     return {
       server: {
-        required: helpers.withMessage("アドレスを入力してください", required),
+        required: helpers.withMessage(this.$t("addressRequired"), required),
         hostname: helpers.withMessage(
-          "有効なアドレスを入力してください",
+          this.$t("invalidAddress"),
           validators.fqdn
         ),
       },
@@ -56,7 +56,7 @@ export default {
         }
       } catch (error) {
         if (error.response?.status === 404) {
-          this.serverErr = "サーバーが見つかりません";
+          this.serverErr = this.$t("serverNotFound");
         }
       }
     },
@@ -69,14 +69,14 @@ export default {
 </script>
 
 <template>
-  <v-alert v-if="$route.query.warn" type="warning" variant="text">
-    <div>ログインが必要です</div>
+  <v-alert v-if="$route.query.l" type="warning" variant="text">
+    <div>{{ $t("loginRequired") }}</div>
   </v-alert>
   <v-form ref="form" @submit.prevent="onSubmit" class="my-3" lazy-validation>
     <v-text-field
       v-model="server"
       name="server"
-      label="Mastodon サーバー"
+      :label="$t('server')"
       placeholder="mastodon.example"
       class="mb-2"
       :error-messages="serverErrors"
@@ -85,10 +85,10 @@ export default {
       clearable
     />
     <v-btn block @click="onSubmit" :disabled="!v$.$dirty || v$.$error"
-      >ログイン</v-btn
+      >{{ $t("login") }}</v-btn
     >
   </v-form>
   <div class="w-100 text-right">
-    <RouterLink to="/about">利用規約</RouterLink>
+    <RouterLink to="/about">{{ $t("about") }}</RouterLink>
   </div>
 </template>

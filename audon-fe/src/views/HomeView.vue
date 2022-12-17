@@ -15,7 +15,7 @@ export default {
   },
   methods: {
     async onLogout() {
-      if (!confirm("Audon からログアウトしますか？")) return;
+      // if (!confirm(this.$t("logoutConfirm"))) return;
 
       try {
         const resp = await axios.post("/app/logout");
@@ -42,7 +42,7 @@ export default {
         color="red"
         @click="onLogout"
       >
-        ログアウト
+      {{ $t("logout") }}
       </v-btn>
     </div>
     <div class="text-center my-10">
@@ -65,7 +65,7 @@ export default {
         <v-text-field v-mode="query"></v-text-field>
       </v-col> -->
       <v-col cols="12">
-        <v-btn block :to="{ name: 'create' }" color="indigo">部屋を作成</v-btn>
+        <v-btn block :to="{ name: 'create' }" color="indigo">{{ $t("createNewRoom") }}</v-btn>
       </v-col>
     </v-row>
   </main>

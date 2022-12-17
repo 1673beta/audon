@@ -45,12 +45,12 @@ export default {
       cohosts: [],
       relationship: "everyone",
       relOptions: [
-        { title: "制限なし", value: "everyone" },
-        { title: "あなたのフォロー限定", value: "following" },
-        { title: "あなたのフォロワー限定", value: "follower" },
-        { title: "あなたのフォローまたはフォロワー限定", value: "knowing" },
-        { title: "あなたの相互フォロー限定", value: "mutual" },
-        { title: "共同ホスト限定", value: "private" },
+        { title: this.$t("form.relationships.everyone"), value: "everyone" },
+        { title: this.$t("form.relationships.following"), value: "following" },
+        { title: this.$t("form.relationships.follower"), value: "follower" },
+        { title: this.$t("form.relationships.knowing"), value: "knowing" },
+        { title: this.$t("form.relationships.mutual"), value: "mutual" },
+        { title: this.$t("form.relationships.private"), value: "private" },
       ],
       scheduledAt: null,
       searchResult: null,
@@ -69,12 +69,12 @@ export default {
   validations() {
     return {
       title: {
-        required: helpers.withMessage("部屋の名前を入力してください", required),
-        maxLength: maxLength(100)
+        required: helpers.withMessage(this.$t("form.titleRequired"), required),
+        maxLength: maxLength(100),
       },
       description: {
-        maxLength: maxLength(500)
-      }
+        maxLength: maxLength(500),
+      },
     };
   },
   computed: {
@@ -95,9 +95,7 @@ export default {
       if (!donURL) return "";
       const url = new URL(donURL);
       const texts = [
-        "Audon で部屋を作りました！",
-        `参加用リンク： ${this.roomURL}`,
-        `タイトル： ${this.title}`,
+        this.$t("shareRoomMessage", { link: this.roomURL, title: this.title }),
       ];
       if (this.description)
         texts.push(truncate("\n" + this.description, { length: 200 }));
@@ -110,7 +108,7 @@ export default {
       this.cohostSearch.cancel();
       if (!val) return;
       if (some(this.cohosts, { finger: val })) {
-        this.searchError.message = "すでに追加済みです";
+        this.searchError.message = this.$t("errors.alreadyAdded");
         this.searchError.colour = "warning";
         this.searchError.enabled = true;
         return;
@@ -141,7 +139,7 @@ export default {
         this.searchResult = user;
       } catch (error) {
         if (error.isMastoError && error.statusCode === 404) {
-          this.searchError.message = `${val} が見つかりません`;
+          this.searchError.message = this.$t("errors.notFound", { value: val });
           this.searchError.colour = "error";
           this.searchError.enabled = true;
         }
@@ -172,7 +170,7 @@ export default {
           remote_id: u.id,
           remote_url: u.url,
         })),
-        restriction: this.relationship
+        restriction: this.relationship,
       };
       this.isSubmissionLoading = false;
       try {
@@ -195,16 +193,12 @@ export default {
 
 <template>
   <v-dialog v-model="isDialogActive" persistent max-width="700">
-    <v-alert
-      type="success"
-      color="blue-gray"
-      title="お部屋の用意ができました！"
-    >
+    <v-alert type="success" color="blue-gray" :title="$t('roomReady.header')">
       <div>
-        {{ title }} を作りました。参加者に以下の URL を共有してください。
+        {{ $t("roomReady.message", { title }) }}
       </div>
       <div class="my-3">
-        <h3 style="word-break: break-all;">{{ roomURL }}</h3>
+        <h3 style="word-break: break-all">{{ roomURL }}</h3>
       </div>
       <div>
         <v-btn
@@ -213,7 +207,7 @@ export default {
           @click="onShareClick"
           color="#563ACC"
           size="small"
-          >シェア</v-btn
+          >{{ $t("share") }}</v-btn
         >
         <v-btn
           @click="clipboard.copy(roomURL)"
@@ -222,7 +216,7 @@ export default {
           :prepend-icon="
             clipboard.copied.value ? mdiClipboardCheck : mdiClipboardEdit
           "
-          >{{ clipboard.copied.value ? "コピーしました" : "コピー" }}</v-btn
+          >{{ clipboard.copied.value ? $t("copied") : $t("copy") }}</v-btn
         >
       </div>
       <div class="text-center mt-10 mb-1">
@@ -230,7 +224,7 @@ export default {
           color="indigo"
           :to="{ name: 'room', params: { id: createdRoomID } }"
           size="large"
-          >入室</v-btn
+          >{{ $t("enterRoom") }}</v-btn
         >
       </div>
     </v-alert>
@@ -239,7 +233,7 @@ export default {
     <div>
       <v-btn class="ma-2" variant="text" color="blue" :to="{ name: 'home' }">
         <v-icon start :icon="mdiArrowLeft"></v-icon>
-        戻る
+        {{ $t("back") }}
       </v-btn>
       <v-snackbar
         v-model="searchError.enabled"
@@ -251,12 +245,14 @@ export default {
         {{ searchError.message }}
       </v-snackbar>
       <v-card :loading="isSubmissionLoading">
-        <v-card-title class="text-center">部屋を新規作成</v-card-title>
+        <v-card-title class="text-center">{{
+          $t("createNewRoom")
+        }}</v-card-title>
         <v-card-text>
           <v-form>
             <v-text-field
               v-model="title"
-              label="タイトル"
+              :label="$t('form.title')"
               :counter="100"
               :error-messages="titleErrors"
               required
@@ -267,18 +263,23 @@ export default {
               auto-grow
               v-model="description"
               rows="2"
-              label="説明"
+              :label="$t('form.description')"
               :counter="500"
             ></v-textarea>
             <v-select
               :items="relOptions"
-              label="入室制限"
+              :label="$t('form.restriction')"
               v-model="relationship"
-              :messages="['共同ホストは制限に関わらず入室できます']"
+              :messages="[$t('form.cohostCanAlwaysJoin')]"
             ></v-select>
             <v-card class="my-3" variant="outlined">
-              <v-card-title class="text-subtitle-1">共同ホスト</v-card-title>
-              <v-card-text v-if="cohosts.length > 0 || searchResult" class="py-0">
+              <v-card-title class="text-subtitle-1">{{
+                $t("form.cohosts")
+              }}</v-card-title>
+              <v-card-text
+                v-if="cohosts.length > 0 || searchResult"
+                class="py-0"
+              >
                 <template v-if="cohosts.length > 0">
                   <v-list lines="two" variant="tonal">
                     <v-list-item
@@ -358,15 +359,15 @@ export default {
             <v-text-field
               type="datetime-local"
               v-model="scheduledAt"
-              label="開始予約"
+              :label="$t('form.schedule')"
               disabled
-              :messages="['今後のアップデートで追加予定']"
+              :messages="[$t('comingFuture')]"
             ></v-text-field>
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-btn block color="indigo" @click="onSubmit" variant="flat">
-            作成
+            {{ $t("create") }}
           </v-btn>
         </v-card-actions>
       </v-card>

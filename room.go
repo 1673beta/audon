@@ -194,7 +194,7 @@ func joinRoomHandler(c echo.Context) (err error) {
 
 	// check room restriction
 	if room.IsPrivate() && !canTalk {
-		return ErrOperationNotPermitted
+		return c.String(http.StatusForbidden, string(room.Restriction))
 	}
 	if !canTalk && (room.IsFollowingOnly() || room.IsFollowerOnly() || room.IsFollowingOrFollowerOnly() || room.IsMutualOnly()) {
 		mastoClient, _ := getMastodonClient(c)

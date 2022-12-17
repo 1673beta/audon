@@ -59,7 +59,7 @@ export default {
       editingRoomInfo: {
         title: {
           required: helpers.withMessage(
-            "部屋の名前を入力してください",
+            this.$t("form.titleRequired"),
             required
           ),
           maxLength: maxLength(100),
@@ -102,12 +102,12 @@ export default {
         restriction: "",
       },
       relOptions: [
-        { title: "制限なし", value: "everyone" },
-        { title: "あなたのフォロー限定", value: "following" },
-        { title: "あなたのフォロワー限定", value: "follower" },
-        { title: "あなたのフォローまたはフォロワー限定", value: "knowing" },
-        { title: "あなたの相互フォロー限定", value: "mutual" },
-        { title: "共同ホスト限定", value: "private" },
+        { title: this.$t("form.relationships.everyone"), value: "everyone" },
+        { title: this.$t("form.relationships.following"), value: "following" },
+        { title: this.$t("form.relationships.follower"), value: "follower" },
+        { title: this.$t("form.relationships.knowing"), value: "knowing" },
+        { title: this.$t("form.relationships.mutual"), value: "mutual" },
+        { title: this.$t("form.relationships.private"), value: "private" },
       ],
       participants: {},
       cachedMastoData: {},
@@ -245,10 +245,10 @@ export default {
             let message = "";
             switch (reason) {
               case DisconnectReason.ROOM_DELETED:
-                message = "ホストにより部屋が閉じられました。";
+                message = self.$t("roomEvent.closedByHost");
                 break;
               case DisconnectReason.PARTICIPANT_REMOVED:
-                message = "部屋から退去しました";
+                message = self.$t("roomEvent.removed");
                 break;
               case DisconnectReason.CLIENT_INITIATED:
                 break;
@@ -330,7 +330,7 @@ export default {
               publishOpts
             );
           } catch {
-            alert("ブラウザが録音を許可していません");
+            alert(this.$t("microphoneBlocked"));
           }
         }
       } catch (error) {
@@ -339,23 +339,22 @@ export default {
             let message = "";
             switch (error.response?.data) {
               case "following":
-                message = "この部屋はホストのフォロー限定です。";
+                message = this.$t("errors.restriction.following");
                 break;
               case "follower":
-                message = "この部屋はホストのフォロワー限定です。";
+                message = this.$t("errors.restriction.follower");
                 break;
               case "knowing":
-                message =
-                  "この部屋はホストのフォローまたはフォロワー限定です。";
+                message = this.$t("errors.restriction.knowing");
                 break;
               case "mutual":
-                message = "この部屋はホストの相互フォロー限定です。";
+                message = this.$t("errors.restriction.mutual");
                 break;
               case "private":
-                message = "この部屋は共同ホスト限定です。";
+                message = this.$t("errors.restriction.private");
                 break;
               default:
-                message = "入室が許可されていません。";
+                message = this.$t("errors.restriction.default");
             }
             alert(message);
             break;
@@ -363,12 +362,10 @@ export default {
             pushNotFound(this.$route);
             break;
           case 406:
-            alert(
-              "他のデバイスで入室済みです。切断された場合はしばらく待ってからやり直してください。"
-            );
+            alert(this.$t("errors.alreadyConnected"));
             break;
           case 410:
-            alert("この部屋はすでに閉じられています。");
+            alert(this.$t("errors.alreadyClosed"));
             break;
           default:
             alert(error);
@@ -381,7 +378,7 @@ export default {
     onResize() {
       const mainArea = document.getElementById("mainArea");
       const height = mainArea.clientHeight;
-      this.mainHeight = height > 700 ? 700 : window.innerHeight - 70;
+      this.mainHeight = height > 700 ? 700 : window.innerHeight - 95;
     },
     isHost(identity) {
       return identity === this.roomInfo.host?.audon_id;
@@ -427,7 +424,7 @@ export default {
       await this.publishDataToHostAndCohosts(data);
     },
     async requestSpeak() {
-      if (confirm("発言をリクエストしますか？")) {
+      if (confirm(this.$t("speakRequest.dialog"))) {
         await this.publishDataToHostAndCohosts({ kind: "speak_request" });
         this.showRequestedNotification = true;
       }
@@ -499,16 +496,15 @@ export default {
             );
           }
         } catch {
-          alert("ブラウザが録音を許可していません");
+          alert(this.$t("microphoneBlocked"));
         }
       } else {
-        // alert("リクエストはアップデートで実装予定です！");
         this.requestSpeak();
       }
     },
     async onRoomClose() {
       // TODO: change this from confirm to a vuetify thing
-      if (confirm("この部屋を閉じますか？")) {
+      if (confirm(this.$t("closeRoomConfirm"))) {
         try {
           await axios.delete(`/api/room/${this.roomID}`);
         } catch (error) {
@@ -521,7 +517,7 @@ export default {
         await this.roomClient.startAudio();
         this.autoplayDisabled = false;
       } catch {
-        alert("接続できませんでした。退室します。");
+        alert(this.$t("errors.connectionFailed"));
         await this.roomClient.disconnect();
       }
     },
@@ -557,11 +553,11 @@ export default {
 <template>
   <v-dialog v-model="showEditDialog" max-width="500" persistent>
     <v-card>
-      <v-card-title>部屋の編集</v-card-title>
+      <v-card-title>{{ $t("editRoom") }}</v-card-title>
       <v-card-text>
         <v-text-field
           v-model="editingRoomInfo.title"
-          label="タイトル"
+          :label="$t('form.title')"
           :error-messages="titleErrors"
           :counter="100"
           required
@@ -572,14 +568,14 @@ export default {
           auto-grow
           v-model="editingRoomInfo.description"
           rows="2"
-          label="説明"
+          :label="$t('form.description')"
           :counter="500"
         ></v-textarea>
         <v-select
           :items="relOptions"
-          label="入室制限"
+          :label="$t('form.restriction')"
           v-model="editingRoomInfo.restriction"
-          :messages="['共同ホストは制限に関わらず入室できます']"
+          :messages="[$t('form.cohostCanAlwaysJoin')]"
         ></v-select>
       </v-card-text>
       <v-divider></v-divider>
@@ -589,28 +585,32 @@ export default {
             showEditDialog = false;
             editingRoomInfo = clone(roomInfo);
           "
-          >キャンセル</v-btn
+          >{{ $t("cancel") }}</v-btn
         >
-        <v-btn @click="onEditSubmit">保存</v-btn>
+        <v-btn @click="onEditSubmit">{{ $t("save") }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
   <v-dialog v-model="autoplayDisabled" max-width="500" persistent>
     <v-alert color="indigo">
       <div class="mb-5">
-        ブラウザの設定により無音になっています。続行するには「視聴を始める」ボタンを押してください。
+        {{ $t("browserMuted") }}
       </div>
       <div class="text-center mb-3">
-        <v-btn color="gray" @click="onStartListening">視聴を始める</v-btn>
+        <v-btn color="gray" @click="onStartListening">{{
+          $t("startListening")
+        }}</v-btn>
       </div>
       <div class="text-center">
-        <v-btn variant="text" @click="roomClient.disconnect()">退室する</v-btn>
+        <v-btn variant="text" @click="roomClient.disconnect()">{{
+          $t("leaveRoom")
+        }}</v-btn>
       </div>
     </v-alert>
   </v-dialog>
   <v-dialog v-model="showRequestDialog" max-width="500">
     <v-card max-height="600" class="d-flex flex-column">
-      <v-card-title>発言リクエスト</v-card-title>
+      <v-card-title>{{ $t("speakRequest.label") }}</v-card-title>
       <v-card-text class="flex-grow-1 overflow-auto py-0">
         <v-list v-if="speakRequests.size > 0" lines="two" variant="tonal">
           <v-list-item
@@ -651,11 +651,13 @@ export default {
             </v-list-item-subtitle>
           </v-list-item>
         </v-list>
-        <p class="text-center py-3" v-else>リクエストはありません</p>
+        <p class="text-center py-3" v-else>
+          {{ $t("speakRequest.norequest") }}
+        </p>
       </v-card-text>
       <v-divider></v-divider>
       <v-card-actions class="justify-end">
-        <v-btn @click="showRequestDialog = false">閉じる</v-btn>
+        <v-btn @click="showRequestDialog = false">{{ $t("close") }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -665,7 +667,7 @@ export default {
     v-model="showRequestedNotification"
     color="info"
   >
-    <strong>発言リクエストを送信しました！</strong>
+    <strong>{{ $t("speakRequest.sent") }}</strong>
     <template v-slot:actions>
       <v-btn
         variant="text"
@@ -688,7 +690,7 @@ export default {
         showRequestNotification = false;
       "
     >
-      <strong>新しい発言リクエストがあります</strong>
+      <strong>{{ $t("speakRequest.receive") }}</strong>
     </div>
     <template v-slot:actions>
       <v-btn
@@ -717,12 +719,12 @@ export default {
             </template>
             <v-list>
               <v-list-item
-                title="編集"
+                :title="$t('edit')"
                 :prepend-icon="mdiPencil"
                 @click="showEditDialog = true"
               ></v-list-item>
               <v-list-item
-                title="閉室"
+                :title="$t('closeRoom')"
                 :prepend-icon="mdiDoorClosed"
                 @click="onRoomClose"
               ></v-list-item>
