@@ -62,7 +62,7 @@ speakRequest:
   norequest: "No request"
   sent: "Request sent!"
   receive: "New speaker request received!"
-microphoneBlocked: "Your browser blocked recording."
+microphoneBlocked: "Your browser has blocked access to the microphone."
 closeRoomConfirm: "Are you sure you want to close this room?"
 roomEvent:
   closedByHost: "Host has closed this room."

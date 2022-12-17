@@ -61,7 +61,7 @@ speakRequest:
   norequest: "リクエストはありません"
   sent: "発言リクエストを送信しました"
   receive: "新しい発言リクエストがあります"
-microphoneBlocked: "ブラウザが録音を許可していません。"
+microphoneBlocked: "ブラウザがマイクの使用を許可していません。"
 closeRoomConfirm: "この部屋を閉じますか？"
 roomEvent:
   closedByHost: "ホストにより部屋が閉じられました。"
