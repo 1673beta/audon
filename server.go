@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -54,6 +55,26 @@ func init() {
 
 func main() {
 	var err error
+
+	buildInfo, _ := debug.ReadBuildInfo()
+
+	versionStrings := make([]string, 2)
+	idx := 0
+	for _, v := range buildInfo.Settings {
+		if v.Key == "vcs" {
+			versionStrings[idx] = v.Value
+			idx++
+		}
+		if v.Key == "vcs.revision" {
+			rev := v.Value
+			if len(rev) > 10 {
+				rev = rev[:10]
+			}
+			versionStrings[idx] = rev
+			idx++
+		}
+	}
+	version := strings.Join(versionStrings, "-")
 
 	log.Println("Audon server started.")
 
@@ -150,7 +171,15 @@ func main() {
 	api.PUT("/room/:room/:user", updatePermissionHandler)
 
 	e.Static("/assets", "audon-fe/dist/assets")
-	e.File("/*", "audon-fe/dist/index.html")
+	// e.File("/*", "audon-fe/dist/index.html")
+	if mainConfig.Environment != "development" {
+		e.Renderer = &Template{
+			templates: template.Must(template.New("tpl").Delims("{%", "%}").ParseFiles("audon-fe/dist/index.html")),
+		}
+		e.GET("/*", func(c echo.Context) error {
+			return c.Render(http.StatusOK, "version", version)
+		})
+	}
 
 	// use anonymous func to support graceful shutdown
 	go func() {

@@ -17,7 +17,9 @@ export default {
 
 <template>
   <div class="about">
-    Under construction
+    <div>
+      Under construction
+    </div>
     <div>
       <RouterLink :to="{ name: 'home' }">Home</RouterLink>
     </div>

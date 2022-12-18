@@ -1,30 +1,32 @@
 <script>
 import { RouterView, RouterLink } from "vue-router";
-import locales from "./locales"
+import locales from "./locales";
 
 export default {
   setup() {
     return {
-      locales
+      locales,
+    };
+  },
+  data () {
+    const appElem = document.getElementById("app");
+    return {
+      version: appElem.getAttribute("data-version")
     }
   },
   methods: {
     onLocaleChange() {
       localStorage.setItem("locale", this.$i18n.locale);
-    }
-  }
-}
+    },
+  },
+};
 </script>
 
 <template>
   <v-app class="fill-height">
     <v-system-bar window>
       <h2 class="text-center w-100">
-        <RouterLink
-          :to="{ name: 'home' }"
-          class="plain"
-          >Audon</RouterLink
-        >
+        <RouterLink :to="{ name: 'home' }" class="plain">Audon</RouterLink>
       </h2>
     </v-system-bar>
     <v-main>
@@ -45,9 +47,20 @@ export default {
     </v-main>
     <v-bottom-navigation :height="30">
       <div class="w-100 d-flex justify-space-between align-center px-3">
-        <div><a href="https://codeberg.org/nmkj/audon" class="plain" target="_blank">v0.1.0-dev5</a></div>
         <div>
-          <select v-model="$i18n.locale" id="localeSelector" @change="onLocaleChange">
+          <a
+            href="https://codeberg.org/nmkj/audon"
+            class="plain"
+            target="_blank"
+            >{{ version }}</a
+          >
+        </div>
+        <div>
+          <select
+            v-model="$i18n.locale"
+            id="localeSelector"
+            @change="onLocaleChange"
+          >
             <option
               v-for="locale in $i18n.availableLocales"
               :key="`locale-${locale}`"
