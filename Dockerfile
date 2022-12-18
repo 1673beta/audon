@@ -4,7 +4,7 @@ WORKDIR /workspace
 
 COPY audon-fe/ /workspace/
 
-RUN npm install && npm run build
+RUN npm install && npm run build && npm run hash
 
 FROM golang:1.19-bullseye
 

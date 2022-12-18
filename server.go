@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"runtime/debug"
 	"strings"
 	"time"
 
@@ -55,25 +54,6 @@ func init() {
 
 func main() {
 	var err error
-
-	buildInfo, _ := debug.ReadBuildInfo()
-
-	versionStrings := make([]string, 2)
-	idx := 0
-	for _, v := range buildInfo.Settings {
-		if v.Key == "vcs" {
-			versionStrings[idx] = v.Value
-			idx++
-		}
-		if v.Key == "vcs.revision" {
-			rev := v.Value
-			if len(rev) > 10 {
-				rev = rev[:10]
-			}
-			versionStrings[idx] = rev
-			idx++
-		}
-	}
 
 	log.Println("Audon server started.")
 
