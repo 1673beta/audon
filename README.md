@@ -32,6 +32,12 @@ These ports are changeable in `config/livekit.yaml`. Please refer to the documen
 
 ## Installation Steps
 
+Before getting started, clone this repo in your working directory.
+
+```
+git clone --recursive https://codeberg.org/nmkj/audon.git
+```
+
 ### Edit Config Files
 
 The followings config files are needed to run Audon.
