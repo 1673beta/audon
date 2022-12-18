@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "hash": "sh -c 'sed -i -e \"s/%%VERSION%%/git-$(git rev-parse --short HEAD)/\" dist/index.html'",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
   },

@@ -74,7 +74,6 @@ func main() {
 			idx++
 		}
 	}
-	version := strings.Join(versionStrings, "-")
 
 	log.Println("Audon server started.")
 
@@ -171,15 +170,7 @@ func main() {
 	api.PUT("/room/:room/:user", updatePermissionHandler)
 
 	e.Static("/assets", "audon-fe/dist/assets")
-	// e.File("/*", "audon-fe/dist/index.html")
-	if mainConfig.Environment != "development" {
-		e.Renderer = &Template{
-			templates: template.Must(template.New("tpl").Delims("{%", "%}").ParseFiles("audon-fe/dist/index.html")),
-		}
-		e.GET("/*", func(c echo.Context) error {
-			return c.Render(http.StatusOK, "version", version)
-		})
-	}
+	e.File("/*", "audon-fe/dist/index.html")
 
 	// use anonymous func to support graceful shutdown
 	go func() {

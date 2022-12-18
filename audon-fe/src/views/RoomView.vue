@@ -28,6 +28,7 @@ import {
 import { login } from "masto";
 import { useVuelidate } from "@vuelidate/core";
 import { helpers, maxLength, required } from "@vuelidate/validators";
+import NoSleep from "../assets/nosleep";
 
 const publishOpts = {
   audioBitrate: AudioPresets.music,
@@ -121,6 +122,7 @@ export default {
       showRequestedNotification: false,
       isEditLoading: false,
       showEditDialog: false,
+      noSleepHandler: new NoSleep(),
     };
   },
   created() {
@@ -134,9 +136,15 @@ export default {
       // already being observed
       { immediate: true }
     );
-  },
-  mounted() {
+
     this.onResize();
+  },
+  async mounted() {
+    if (!this.noSleepHandler.isEnabled) {
+      try {
+        await this.noSleepHandler.enable();
+      } catch {}
+    }
   },
   computed: {
     iamMuted() {
@@ -520,6 +528,9 @@ export default {
         alert(this.$t("errors.connectionFailed"));
         await this.roomClient.disconnect();
       }
+      try {
+        await this.noSleepHandler.enable();
+      } catch {}
     },
     async onEditSubmit() {
       this.editingRoomInfo.title = trim(this.editingRoomInfo.title);
