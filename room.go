@@ -166,9 +166,13 @@ func joinRoomHandler(c echo.Context) (err error) {
 		return ErrRoomNotFound
 	}
 
-	// decline the request if user is already in the room
+	// remove old connection if user is already in the room
 	if room.IsUserInLivekitRoom(c.Request().Context(), user.AudonID) {
-		return echo.NewHTTPError(http.StatusNotAcceptable, "already_in_room")
+		lkRoomServiceClient.RemoveParticipant(c.Request().Context(), &livekit.RoomParticipantIdentity{
+			Room:     room.RoomID,
+			Identity: user.AudonID,
+		})
+		// return echo.NewHTTPError(http.StatusNotAcceptable, "already_in_room")
 	}
 
 	now := time.Now().UTC()
