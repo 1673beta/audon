@@ -28,7 +28,7 @@ import {
 import { login } from "masto";
 import { useVuelidate } from "@vuelidate/core";
 import { helpers, maxLength, required } from "@vuelidate/validators";
-import NoSleep from "../assets/nosleep";
+import NoSleep from "@uriopass/nosleep.js";
 
 const publishOpts = {
   audioBitrate: AudioPresets.music,
@@ -36,8 +36,8 @@ const publishOpts = {
 };
 
 const captureOpts = {
-  autoGainControl: false,
-  echoCancellation: false,
+  // autoGainControl: false,
+  // echoCancellation: false,
   // sampleRate: 48000,
   // sampleSize: 16,
   // channelCount: 2
@@ -45,6 +45,15 @@ const captureOpts = {
 
 export default {
   setup() {
+    const noSleep = new NoSleep();
+    document.addEventListener(
+      "click",
+      function enableNoSleep() {
+        document.removeEventListener("click", enableNoSleep, false);
+        noSleep.enable();
+      },
+      false
+    );
     return {
       v$: useVuelidate(),
       donStore: useMastodonStore(),
@@ -122,7 +131,6 @@ export default {
       showRequestedNotification: false,
       isEditLoading: false,
       showEditDialog: false,
-      noSleepHandler: new NoSleep(),
     };
   },
   created() {
@@ -138,15 +146,6 @@ export default {
     );
 
     this.onResize();
-  },
-  async mounted() {
-    if (!this.noSleepHandler.isEnabled) {
-      try {
-        await this.noSleepHandler.enable();
-      } catch (err) {
-        // alert(err)
-      }
-    }
   },
   computed: {
     iamMuted() {
@@ -198,12 +197,12 @@ export default {
       try {
         const resp = await axios.get(`/api/room/${this.roomID}`);
         const room = new Room({
-          adaptiveStream: true,
-          dynacast: true,
-          publishDefaults: {
-            stopMicTrackOnMute: true,
-            simulcast: false,
-          },
+          // adaptiveStream: false,
+          // dynacast: false,
+          // publishDefaults: {
+          //   stopMicTrackOnMute: false,
+          //   simulcast: false,
+          // },
         });
         const self = this;
         room
@@ -543,11 +542,6 @@ export default {
       try {
         await this.roomClient.startAudio();
         this.autoplayDisabled = false;
-        try {
-          await this.noSleepHandler.enable();
-        } catch (err) {
-          // alert(err);
-        }
       } catch {
         alert(this.$t("errors.connectionFailed"));
         await this.roomClient.disconnect();
