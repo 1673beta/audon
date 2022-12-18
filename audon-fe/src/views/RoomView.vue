@@ -36,8 +36,8 @@ const publishOpts = {
 };
 
 const captureOpts = {
-  // autoGainControl: false,
-  // echoCancellation: false,
+  autoGainControl: false,
+  echoCancellation: false,
   // sampleRate: 48000,
   // sampleSize: 16,
   // channelCount: 2
@@ -143,7 +143,9 @@ export default {
     if (!this.noSleepHandler.isEnabled) {
       try {
         await this.noSleepHandler.enable();
-      } catch {}
+      } catch (err) {
+        // alert(err)
+      }
     }
   },
   computed: {
@@ -209,12 +211,14 @@ export default {
             if (track.kind === Track.Kind.Audio) {
               const element = track.attach();
               self.$refs.audioDOM.appendChild(element);
+              self.mutedSpeakerIDs.delete(participant.identity);
             }
           })
           .on(
             RoomEvent.TrackUnsubscribed,
             (track, publication, participant) => {
               track.detach();
+              self.mutedSpeakerIDs.add(participant.identity);
             }
           )
           .on(RoomEvent.LocalTrackPublished, (publication, participant) => {
@@ -232,6 +236,7 @@ export default {
             if (metadata !== null) {
               self.fetchMastoData(participant.identity, metadata);
             }
+            self.mutedSpeakerIDs.add(participant.identity);
           })
           .on(RoomEvent.TrackMuted, (publication, participant) => {
             self.mutedSpeakerIDs.add(participant.identity);
@@ -241,7 +246,6 @@ export default {
           })
           .on(RoomEvent.ParticipantDisconnected, (participant) => {
             self.participants = omit(self.participants, participant.identity);
-            self.mutedSpeakerIDs.delete(participant.identity);
           })
           .on(RoomEvent.AudioPlaybackStatusChanged, () => {
             if (!room.canPlaybackAudio) {
@@ -310,8 +314,12 @@ export default {
                 .setMicrophoneEnabled(true, captureOpts, publishOpts)
                 .then((v) => {
                   self.micGranted = true;
+                })
+                .finally(() => {
+                  self.roomClient.localParticipant.setMicrophoneEnabled(false);
                 });
             }
+            self.refreshMuteStatus();
           });
         await room.connect(resp.data.url, resp.data.token);
         this.roomClient = room;
@@ -321,6 +329,8 @@ export default {
         for (const part of room.participants.values()) {
           this.addParticipant(part);
         }
+        this.mutedSpeakerIDs.add(this.donStore.oauth.audon_id);
+        this.refreshMuteStatus();
         this.activeSpeakerIDs = new Set(
           map(room.activeSpeakers, (p) => p.identity)
         );
@@ -339,6 +349,8 @@ export default {
             );
           } catch {
             alert(this.$t("microphoneBlocked"));
+          } finally {
+            await room.localParticipant.setMicrophoneEnabled(false);
           }
         }
       } catch (error) {
@@ -381,6 +393,13 @@ export default {
         this.$router.push({ name: "home" });
       } finally {
         this.loading = false;
+      }
+    },
+    refreshMuteStatus() {
+      for (const part of this.roomClient.participants.values()) {
+        if (!part.isMicrophoneEnabled) {
+          this.mutedSpeakerIDs.add(part.identity);
+        }
       }
     },
     onResize() {
@@ -524,13 +543,17 @@ export default {
       try {
         await this.roomClient.startAudio();
         this.autoplayDisabled = false;
+        try {
+          await this.noSleepHandler.enable();
+        } catch (err) {
+          // alert(err);
+        }
       } catch {
         alert(this.$t("errors.connectionFailed"));
         await this.roomClient.disconnect();
+      } finally {
+        this.refreshMuteStatus();
       }
-      try {
-        await this.noSleepHandler.enable();
-      } catch {}
     },
     async onEditSubmit() {
       this.editingRoomInfo.title = trim(this.editingRoomInfo.title);
