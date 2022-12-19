@@ -150,7 +150,6 @@ func main() {
 	api.PUT("/room/:room/:user", updatePermissionHandler)
 
 	e.Static("/assets", "audon-fe/dist/assets")
-	e.File("/favicon.ico", "audon-fe/dist/favicon.ico")
 	e.File("/*", "audon-fe/dist/index.html")
 
 	// use anonymous func to support graceful shutdown
