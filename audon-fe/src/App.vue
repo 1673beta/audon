@@ -8,11 +8,11 @@ export default {
       locales,
     };
   },
-  data () {
+  data() {
     const appElem = document.getElementById("app");
     return {
-      version: appElem.getAttribute("data-version")
-    }
+      version: appElem.getAttribute("data-version"),
+    };
   },
   methods: {
     onLocaleChange() {
@@ -25,9 +25,17 @@ export default {
 <template>
   <v-app class="fill-height">
     <v-system-bar window>
-      <h2 class="text-center w-100">
-        <RouterLink :to="{ name: 'home' }" class="plain">Audon</RouterLink>
-      </h2>
+      <div class="d-flex justify-center align-center w-100">
+        <img
+          class="mr-2"
+          height="20"
+          src="./assets/udon.png"
+          alt="Emoji of Udon Noodle"
+        />
+        <h2>
+          <RouterLink :to="{ name: 'home' }" class="plain">Audon</RouterLink>
+        </h2>
+      </div>
     </v-system-bar>
     <v-main>
       <v-container class="fill-height">
