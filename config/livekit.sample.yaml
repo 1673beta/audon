@@ -58,7 +58,7 @@ room:
 audio:
   # minimum level to be considered active, 0-127, where 0 is loudest
   # # defaults to 30
-  active_level: 60
+  active_level: 45
   # percentile to measure, a participant is considered active if it has exceeded the
   # ActiveLevel more than MinPercentile% of the time
   # # defaults to 40
