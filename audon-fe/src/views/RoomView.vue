@@ -139,6 +139,7 @@ export default {
       () => this.$route.params,
       () => {
         this.joinRoom();
+        setInterval(this.refreshRemoteMuteStatus, 100);
       },
       // fetch the data when the view is created and the data is
       // already being observed
@@ -210,19 +211,16 @@ export default {
             if (track.kind === Track.Kind.Audio) {
               const element = track.attach();
               self.$refs.audioDOM.appendChild(element);
-              self.mutedSpeakerIDs.delete(participant.identity);
             }
           })
           .on(
             RoomEvent.TrackUnsubscribed,
             (track, publication, participant) => {
               track.detach();
-              self.mutedSpeakerIDs.add(participant.identity);
             }
           )
           .on(RoomEvent.LocalTrackPublished, (publication, participant) => {
             self.micGranted = true;
-            self.mutedSpeakerIDs.delete(participant.identity);
           })
           .on(RoomEvent.LocalTrackUnpublished, (publication, participant) => {
             publication.track?.detach();
@@ -235,14 +233,9 @@ export default {
             if (metadata !== null) {
               self.fetchMastoData(participant.identity, metadata);
             }
-            self.mutedSpeakerIDs.add(participant.identity);
           })
-          .on(RoomEvent.TrackMuted, (publication, participant) => {
-            self.mutedSpeakerIDs.add(participant.identity);
-          })
-          .on(RoomEvent.TrackUnmuted, (publication, participant) => {
-            self.mutedSpeakerIDs.delete(participant.identity);
-          })
+          .on(RoomEvent.TrackMuted, (publication, participant) => {})
+          .on(RoomEvent.TrackUnmuted, (publication, participant) => {})
           .on(RoomEvent.ParticipantDisconnected, (participant) => {
             self.participants = omit(self.participants, participant.identity);
           })
@@ -308,7 +301,7 @@ export default {
             for (const speakers of self.roomInfo.speakers) {
               self.speakRequests.delete(speakers.audon_id);
             }
-            if (self.iamSpeaker || !self.micGranted) {
+            if (self.iamSpeaker && !self.micGranted) {
               self.roomClient.localParticipant
                 .setMicrophoneEnabled(true, captureOpts, publishOpts)
                 .then((v) => {
@@ -318,7 +311,6 @@ export default {
                   self.roomClient.localParticipant.setMicrophoneEnabled(false);
                 });
             }
-            self.refreshMuteStatus();
           });
         await room.connect(resp.data.url, resp.data.token);
         this.roomClient = room;
@@ -329,7 +321,6 @@ export default {
           this.addParticipant(part);
         }
         this.mutedSpeakerIDs.add(this.donStore.oauth.audon_id);
-        this.refreshMuteStatus();
         this.activeSpeakerIDs = new Set(
           map(room.activeSpeakers, (p) => p.identity)
         );
@@ -394,9 +385,12 @@ export default {
         this.loading = false;
       }
     },
-    refreshMuteStatus() {
+    refreshRemoteMuteStatus() {
       for (const part of this.roomClient.participants.values()) {
-        if (!part.isMicrophoneEnabled) {
+        const track = part.getTrack(Track.Source.Microphone);
+        if (track?.isMuted === false) {
+          this.mutedSpeakerIDs.delete(part.identity);
+        } else {
           this.mutedSpeakerIDs.add(part.identity);
         }
       }
@@ -409,12 +403,12 @@ export default {
     isHost(identity) {
       return identity === this.roomInfo.host?.audon_id;
     },
-    isCohost(value) {
+    isCohost(metadata) {
       return (
-        value &&
+        metadata &&
         some(this.roomInfo.cohosts, {
-          remote_id: value.remote_id,
-          remote_url: value.remote_url,
+          remote_id: metadata.remote_id,
+          remote_url: metadata.remote_url,
         })
       );
     },
@@ -477,13 +471,6 @@ export default {
         : null;
       if (metadata) {
         this.participants[participant.identity] = metadata;
-        const track = participant.getTrack(Track.Source.Microphone);
-        if (
-          (this.isHost(participant.identity) || this.isCohost(metadata)) &&
-          track?.isMuted
-        ) {
-          this.mutedSpeakerIDs.add(participant.identity);
-        }
       }
       return metadata;
     },
@@ -506,20 +493,29 @@ export default {
       const myTrack = this.roomClient.localParticipant.getTrack(
         Track.Source.Microphone
       );
+      const myIdentity = this.roomClient.localParticipant.identity;
       if (this.iamHost || this.iamCohost || this.iamSpeaker) {
         try {
+          let newMicStatus = false;
           if (!this.micGranted) {
+            newMicStatus = true;
             await this.roomClient.localParticipant.setMicrophoneEnabled(
-              true,
+              newMicStatus,
               captureOpts,
               publishOpts
             );
           } else if (myTrack) {
+            newMicStatus = myTrack.isMuted;
             await this.roomClient.localParticipant.setMicrophoneEnabled(
-              myTrack.isMuted,
+              newMicStatus,
               captureOpts,
               publishOpts
             );
+          }
+          if (newMicStatus) {
+            this.mutedSpeakerIDs.delete(myIdentity);
+          } else {
+            this.mutedSpeakerIDs.add(myIdentity);
           }
         } catch {
           alert(this.$t("microphoneBlocked"));
@@ -545,8 +541,6 @@ export default {
       } catch {
         alert(this.$t("errors.connectionFailed"));
         await this.roomClient.disconnect();
-      } finally {
-        this.refreshMuteStatus();
       }
     },
     async onEditSubmit() {
