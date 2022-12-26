@@ -1,7 +1,7 @@
 <script>
 import { RouterLink } from "vue-router";
 import { useVuelidate } from "@vuelidate/core";
-import { required, helpers } from "@vuelidate/validators";
+import { required, helpers, email, or } from "@vuelidate/validators";
 import { validators } from "../assets/utils";
 import { map } from "lodash-es";
 import axios from "axios";
@@ -23,9 +23,9 @@ export default {
       server: {
         required: helpers.withMessage(this.$t("addressRequired"), required),
         hostname: helpers.withMessage(
-          this.$t("invalidAddress"),
-          validators.fqdn
-        ),
+          this.$t("errors.invalidAddress"),
+          or(validators.fqdn, email)
+        )
       },
     };
   },
@@ -41,6 +41,9 @@ export default {
   },
   methods: {
     async onSubmit() {
+      if (this.server.includes("@")) {
+        this.server = this.server.split("@", 2)[1]
+      }
       const isFormCorrect = await this.v$.$validate();
       if (!isFormCorrect) {
         return;
@@ -56,7 +59,7 @@ export default {
         }
       } catch (error) {
         if (error.response?.status === 404) {
-          this.serverErr = this.$t("serverNotFound");
+          this.serverErr = this.$t("errors.serverNotFound");
         }
       }
     },
