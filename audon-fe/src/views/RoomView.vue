@@ -29,6 +29,7 @@ import { login } from "masto";
 import { useVuelidate } from "@vuelidate/core";
 import { helpers, maxLength, required } from "@vuelidate/validators";
 import NoSleep from "@uriopass/nosleep.js";
+import { DateTime } from "luxon";
 
 const publishOpts = {
   audioBitrate: AudioPresets.music,
@@ -104,7 +105,7 @@ export default {
         host: null,
         cohosts: [],
         speakers: [],
-        createdAt: null,
+        created_at: null,
       },
       editingRoomInfo: {
         title: "",
@@ -131,6 +132,7 @@ export default {
       showRequestedNotification: false,
       isEditLoading: false,
       showEditDialog: false,
+      timeElapsed: "",
     };
   },
   created() {
@@ -146,6 +148,7 @@ export default {
       { immediate: true }
     );
 
+    setInterval(this.refreshTimeElapsed, 1000);
     this.onResize();
   },
   computed: {
@@ -192,6 +195,13 @@ export default {
   },
   methods: {
     webfinger,
+    refreshTimeElapsed() {
+      if (!this.roomInfo.created_at) return;
+      const now = DateTime.utc();
+      const createdAt = DateTime.fromISO(this.roomInfo.created_at);
+      const delta = now.diff(createdAt);
+      this.timeElapsed = delta.toFormat("hh:mm:ss");
+    },
     async joinRoom() {
       if (!this.donStore.authorized) return;
       this.loading = true;
@@ -725,9 +735,10 @@ export default {
   <div class="d-none" ref="audioDOM"></div>
   <main class="fill-height" v-resize="onResize">
     <v-card :height="mainHeight" :loading="loading" class="d-flex flex-column">
-      <v-card-title class="d-flex justify-space-between align-center">
-        <div>{{ roomInfo.title }}</div>
-        <div v-if="iamHost">
+      <v-card-title class="d-flex align-center">
+        <div class="mr-auto overflow-y-auto">{{ roomInfo.title }}</div>
+        <v-chip v-if="timeElapsed" class="mx-1 flex-shrink-0">{{ timeElapsed }}</v-chip>
+        <div v-if="iamHost" class="flex-shrink-0">
           <v-menu>
             <template v-slot:activator="{ props }">
               <v-btn

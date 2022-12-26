@@ -83,7 +83,6 @@ func createRoomHandler(c echo.Context) error {
 		}
 	}
 
-	room.CreatedAt = now
 	if _, insertErr := coll.InsertOne(c.Request().Context(), room); insertErr != nil {
 		c.Logger().Error(insertErr)
 		return echo.NewHTTPError(http.StatusInternalServerError)
@@ -259,8 +258,16 @@ func joinRoomHandler(c echo.Context) (err error) {
 	}
 
 	// Create room in LiveKit if it doesn't exist
-	metadata, _ := json.Marshal(roomMetadata)
 	if lkRoom == nil {
+		room.CreatedAt = now
+		coll := mainDB.Collection(COLLECTION_ROOM)
+		if _, err := coll.UpdateOne(c.Request().Context(),
+			bson.D{{Key: "room_id", Value: roomID}},
+			bson.D{{Key: "$set", Value: bson.D{{Key: "created_at", Value: now}}}}); err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+		metadata, _ := json.Marshal(roomMetadata)
 		_, err = lkRoomServiceClient.CreateRoom(c.Request().Context(), &livekit.CreateRoomRequest{
 			Name:     room.RoomID,
 			Metadata: string(metadata),
