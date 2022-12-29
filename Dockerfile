@@ -28,9 +28,10 @@ WORKDIR /audon
 COPY --from=0 /workspace/dist /audon/audon-fe/dist
 COPY --from=1 /workspace/audon-bin /audon/
 
-RUN apt-get update && \
-    echo "Etc/UTC" > /etc/localtime && \
-    apt-get -y --no-install-recommends install tini \
+RUN echo "Etc/UTC" > /etc/localtime && \
+    apt-get update && apt-get upgrade -y && \
+    apt-get -y --no-install-recommends install \
+    tini \
     tzdata \
     ca-certificates
 
