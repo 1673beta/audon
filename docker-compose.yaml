@@ -44,7 +44,7 @@ services:
 
   audon:
     build: .
-    image: nmkj/audon
+    image: codeberg.org/nmkj/audon
     env_file:
       - .env.production
     restart: unless-stopped
