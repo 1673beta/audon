@@ -155,8 +155,13 @@ export default {
             }
           }
         } catch (error) {
-          if (error.response?.status === 403) {
-            alert(this.$t("loginRequired"));
+          switch (error.response?.status) {
+            case 403:
+              alert(this.$t("loginRequired"));
+              break;
+            case 404:
+              pushNotFound(this.$route);
+              return;
           }
           this.$router.push({
             name: "login",
