@@ -156,18 +156,17 @@ export default {
           }
         } catch (error) {
           switch (error.response?.status) {
-            case 403:
-              alert(this.$t("loginRequired"));
-              break;
             case 404:
               pushNotFound(this.$route);
-              return;
+              break;
+            case 403:
+              alert(this.$t("loginRequired"));
+            default:
+              this.$router.push({
+                name: "login",
+                query: { l: `/r/${this.roomID}` },
+              });
           }
-          this.$router.push({
-            name: "login",
-            query: { l: `/r/${this.roomID}` },
-          });
-          return;
         } finally {
           this.loading = false;
         }
