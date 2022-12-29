@@ -152,6 +152,47 @@ func updateRoomHandler(c echo.Context) (err error) {
 	return c.JSON(http.StatusOK, room)
 }
 
+func previewRoomHandler(c echo.Context) (err error) {
+	roomID := c.Param("id")
+	if err := mainValidator.Var(&roomID, "required,printascii"); err != nil {
+		return wrapValidationError(err)
+	}
+
+	lkRoom, _ := getRoomInLivekit(c.Request().Context(), roomID)
+	if lkRoom == nil {
+		return ErrRoomNotFound
+	}
+
+	roomMetadata, err := getRoomMetadataFromLivekitRoom(lkRoom)
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	if roomMetadata.Restriction != EVERYONE {
+		return ErrOperationNotPermitted
+	}
+
+	participants, err := lkRoomServiceClient.ListParticipants(c.Request().Context(), &livekit.ListParticipantsRequest{Room: roomID})
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	userMetadata := map[string]*AudonUser{}
+
+	for _, part := range participants.GetParticipants() {
+		user := new(AudonUser)
+		if err := json.Unmarshal([]byte(part.GetMetadata()), user); err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+		userMetadata[part.Identity] = user
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{"roomInfo": roomMetadata, "participants": userMetadata})
+}
+
 func joinRoomHandler(c echo.Context) (err error) {
 	roomID := c.Param("id")
 	if err := mainValidator.Var(&roomID, "required,printascii"); err != nil {
@@ -402,10 +443,7 @@ func getRoomToken(room *Room, user *AudonUser, canTalk bool) (string, error) {
 		CanPublish:     &canTalk,
 		CanPublishData: &canPublishData,
 	}
-	metadata, _ := json.Marshal(map[string]string{
-		"remote_id":  user.RemoteID,
-		"remote_url": user.RemoteURL,
-	})
+	metadata, _ := json.Marshal(user)
 
 	at.AddGrant(grant).SetIdentity(user.AudonID).SetValidFor(24 * time.Hour).SetMetadata(string(metadata))
 

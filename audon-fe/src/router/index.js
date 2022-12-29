@@ -40,6 +40,9 @@ const router = createRouter({
     {
       path: "/r/:id",
       name: "room",
+      meta: {
+        noauth: true,
+      },
       component: RoomView,
     },
   ],

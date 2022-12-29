@@ -95,7 +95,7 @@ export default {
       mdiDotsVertical,
       mdiPencil,
       roomID: this.$route.params.id,
-      loading: false,
+      loading: true,
       mainHeight: 600,
       roomClient: new Room(),
       roomInfo: {
@@ -133,23 +133,50 @@ export default {
       isEditLoading: false,
       showEditDialog: false,
       timeElapsed: "",
+      preview: false,
     };
   },
-  created() {
-    // watch the params of the route to fetch the data again
-    this.$watch(
-      () => this.$route.params,
-      () => {
-        this.joinRoom();
-        setInterval(this.refreshRemoteMuteStatus, 100);
-      },
-      // fetch the data when the view is created and the data is
-      // already being observed
-      { immediate: true }
-    );
-
-    setInterval(this.refreshTimeElapsed, 1000);
+  async created() {
     this.onResize();
+    // fetch mastodon token
+    if (!this.donStore.client || !this.donStore.authorized) {
+      try {
+        await this.donStore.fetchToken();
+      } catch {
+        this.preview = true;
+        try {
+          const resp = await axios.get(`/app/preview/${this.roomID}`);
+          this.roomInfo = resp.data.roomInfo;
+          this.participants = resp.data.participants;
+          this.mutedSpeakerIDs = new Set(Object.keys(this.participants));
+          for (const [key, value] of Object.entries(this.participants)) {
+            if (value !== null) {
+              this.fetchMastoData(key, value);
+            }
+          }
+        } catch (error) {
+          if (error.response?.status === 403) {
+            alert(this.$t("loginRequired"));
+          }
+          this.$router.push({
+            name: "login",
+            query: { l: `/r/${this.roomID}` },
+          });
+          return;
+        } finally {
+          this.loading = false;
+        }
+      }
+    }
+    if (!this.preview) {
+      try {
+        await this.joinRoom();
+      } finally {
+        this.loading = false;
+      }
+    }
+    setInterval(this.refreshRemoteMuteStatus, 100);
+    setInterval(this.refreshTimeElapsed, 1000);
   },
   computed: {
     iamMuted() {
@@ -204,7 +231,6 @@ export default {
     },
     async joinRoom() {
       if (!this.donStore.authorized) return;
-      this.loading = true;
       try {
         const resp = await axios.get(`/api/room/${this.roomID}`);
         const room = new Room({
@@ -391,8 +417,6 @@ export default {
             alert(error);
         }
         this.$router.push({ name: "home" });
-      } finally {
-        this.loading = false;
       }
     },
     refreshRemoteMuteStatus() {
@@ -584,7 +608,7 @@ export default {
 
 <template>
   <v-dialog v-model="showEditDialog" max-width="500" persistent>
-    <v-card>
+    <v-card :loading="isEditLoading">
       <v-card-title>{{ $t("editRoom") }}</v-card-title>
       <v-card-text>
         <v-text-field
@@ -619,7 +643,9 @@ export default {
           "
           >{{ $t("cancel") }}</v-btn
         >
-        <v-btn @click="onEditSubmit">{{ $t("save") }}</v-btn>
+        <v-btn :disabled="isEditLoading" @click="onEditSubmit">{{
+          $t("save")
+        }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -737,7 +763,9 @@ export default {
     <v-card :height="mainHeight" :loading="loading" class="d-flex flex-column">
       <v-card-title class="d-flex align-center">
         <div class="mr-auto overflow-y-auto">{{ roomInfo.title }}</div>
-        <v-chip v-if="timeElapsed" class="mx-1 flex-shrink-0">{{ timeElapsed }}</v-chip>
+        <v-chip v-if="timeElapsed" class="mx-1 flex-shrink-0">{{
+          timeElapsed
+        }}</v-chip>
         <div v-if="iamHost" class="flex-shrink-0">
           <v-menu>
             <template v-slot:activator="{ props }">
@@ -812,7 +840,16 @@ export default {
         </v-row>
       </v-card-text>
       <v-divider></v-divider>
-      <v-card-actions class="justify-center" style="gap: 50px">
+      <v-card-actions v-if="preview" class="justify-center">
+        <v-btn
+          variant="flat"
+          color="indigo"
+          block
+          :to="{ name: 'login', query: { l: `/r/${roomID}` } }"
+          >{{ $t("enterRoom") }}</v-btn
+        >
+      </v-card-actions>
+      <v-card-actions v-else class="justify-center" style="gap: 50px">
         <v-btn
           :icon="micStatusIcon"
           color="white"

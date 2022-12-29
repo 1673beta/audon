@@ -23,7 +23,7 @@ type (
 		AudonID   string    `bson:"audon_id" json:"audon_id" validate:"alphanum"`
 		RemoteID  string    `bson:"remote_id" json:"remote_id" validate:"printascii"`
 		RemoteURL string    `bson:"remote_url" json:"remote_url" validate:"url"`
-		Webfinger string    `bson:"webfinger" jsong:"webfinger" validate:"email"`
+		Webfinger string    `bson:"webfinger" json:"webfinger" validate:"email"`
 		CreatedAt time.Time `bson:"created_at" json:"created_at"`
 	}
 
@@ -58,6 +58,7 @@ const (
 	COLLECTION_USER = "user"
 	COLLECTION_ROOM = "room"
 
+	EVERYONE              JoinRestriction = "everyone"
 	FOLLOWING             JoinRestriction = "following"
 	FOLLOWER              JoinRestriction = "follower"
 	FOLLOWING_OR_FOLLOWER JoinRestriction = "knowing"

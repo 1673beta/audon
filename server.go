@@ -138,6 +138,7 @@ func main() {
 	e.GET("/app/oauth", oauthHandler)
 	e.GET("/app/verify", verifyHandler)
 	e.POST("/app/logout", logoutHandler)
+	e.GET("/app/preview/:id", previewRoomHandler)
 
 	e.POST("/app/webhook", livekitWebhookHandler)
 
