@@ -26,18 +26,19 @@ export default {
   <v-app class="fill-height">
     <v-system-bar window>
       <div class="d-flex justify-center align-center w-100">
-        <img
-          class="mr-2"
-          height="20"
-          src="./assets/udon.png"
-          alt="Emoji of Udon Noodle"
-        />
-        <h2>
-          <RouterLink :to="{ name: 'home' }" class="plain">Audon</RouterLink>
-        </h2>
+        <RouterLink :to="{ name: 'home' }" class="d-flex align-center">
+          <img
+            height="20"
+            src="./assets/img/audon-logo-orange.svg"
+            alt="Branding Logo"
+          />
+        </RouterLink>
       </div>
     </v-system-bar>
     <v-main>
+      <div id="mascot" class="pa-3">
+        <img :draggable="false" src="./assets/img/mascot.png" />
+      </div>
       <v-container class="fill-height">
         <v-row
           align="center"
@@ -84,6 +85,18 @@ export default {
 </template>
 
 <style>
+#mascot {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
+#mascot img {
+  opacity: 1;
+  width: 200px;
+  max-width: 100%;
+}
+
 #app .v-application__wrap {
   min-height: 100%;
 }

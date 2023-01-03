@@ -20,6 +20,14 @@ import axios from "axios";
 export default {
   setup() {
     return {
+      mdiMastodon,
+      mdiClipboardCheck,
+      mdiClipboardEdit,
+      mdiArrowLeft,
+      mdiMagnify,
+      mdiClose,
+      mdiPlus,
+      webfinger,
       v$: useVuelidate(),
       donStore: useMastodonStore(),
       clipboard: useClipboard(),
@@ -33,13 +41,6 @@ export default {
   },
   data() {
     return {
-      mdiMastodon,
-      mdiClipboardCheck,
-      mdiClipboardEdit,
-      mdiArrowLeft,
-      mdiMagnify,
-      mdiClose,
-      mdiPlus,
       title: "",
       description: "",
       cohosts: [],
@@ -155,7 +156,6 @@ export default {
     onShareClick() {
       window.open(this.shareURL, "Audon Share", "width=400,height=600");
     },
-    webfinger,
     async onSubmit() {
       this.title = trim(this.title);
       this.description = trim(this.description);

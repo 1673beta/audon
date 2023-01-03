@@ -56,6 +56,19 @@ export default {
       false
     );
     return {
+      webfinger,
+      clone,
+      mdiLogout,
+      mdiAccountVoice,
+      mdiMicrophone,
+      mdiMicrophoneOff,
+      mdiMicrophoneQuestion,
+      mdiDoorClosed,
+      mdiVolumeOff,
+      mdiClose,
+      mdiCheck,
+      mdiDotsVertical,
+      mdiPencil,
       v$: useVuelidate(),
       donStore: useMastodonStore(),
       decoder: new TextDecoder(),
@@ -83,20 +96,9 @@ export default {
   },
   data() {
     return {
-      mdiLogout,
-      mdiAccountVoice,
-      mdiMicrophone,
-      mdiMicrophoneOff,
-      mdiMicrophoneQuestion,
-      mdiDoorClosed,
-      mdiVolumeOff,
-      mdiClose,
-      mdiCheck,
-      mdiDotsVertical,
-      mdiPencil,
       roomID: this.$route.params.id,
       loading: true,
-      mainHeight: 600,
+      mainHeight: 700,
       roomClient: new Room(),
       roomInfo: {
         title: "",
@@ -225,7 +227,6 @@ export default {
     },
   },
   methods: {
-    webfinger,
     refreshTimeElapsed() {
       if (!this.roomInfo.created_at) return;
       const now = DateTime.utc();
@@ -324,6 +325,8 @@ export default {
                     self.isCohost(metadata)
                   ) {
                     self.speakRequests.delete(jsonData.audon_id);
+                    if (self.speakRequests.size < 1)
+                      self.showRequestNotification = false;
                   }
                   break;
               }
@@ -340,6 +343,8 @@ export default {
             if (!self.roomInfo.speakers) return;
             for (const speakers of self.roomInfo.speakers) {
               self.speakRequests.delete(speakers.audon_id);
+              if (self.speakRequests.size < 1)
+                self.showRequestNotification = false;
             }
             if (self.iamSpeaker && !self.micGranted) {
               self.roomClient.localParticipant
@@ -605,7 +610,6 @@ export default {
         this.showEditDialog = false;
       }
     },
-    clone,
   },
 };
 </script>
@@ -767,9 +771,9 @@ export default {
     <v-card :height="mainHeight" :loading="loading" class="d-flex flex-column">
       <v-card-title class="d-flex align-center">
         <div class="mr-auto overflow-y-auto">{{ roomInfo.title }}</div>
-        <v-chip v-if="timeElapsed" class="mx-1 flex-shrink-0">{{
-          timeElapsed
-        }}</v-chip>
+        <v-chip v-if="timeElapsed" class="mx-1 flex-shrink-0">
+          <code>{{ timeElapsed }}</code>
+        </v-chip>
         <div v-if="iamHost" class="flex-shrink-0">
           <v-menu>
             <template v-slot:activator="{ props }">
@@ -887,3 +891,9 @@ export default {
     </v-card>
   </main>
 </template>
+
+<style scoped>
+.v-card {
+  background-color: rgba(33, 33, 33, 0.9);
+}
+</style>
