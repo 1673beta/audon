@@ -893,7 +893,4 @@ export default {
 </template>
 
 <style scoped>
-.v-card {
-  background-color: rgba(33, 33, 33, 0.9);
-}
 </style>

@@ -32,6 +32,11 @@ type (
 		templates *template.Template
 	}
 
+	TemplateData struct {
+		Config *AppConfigBase
+		Room   *Room
+	}
+
 	CustomValidator struct {
 		validator *validator.Validate
 	}
@@ -100,6 +105,9 @@ func main() {
 	defer e.Close()
 
 	e.Validator = &CustomValidator{validator: mainValidator}
+	e.Renderer = &Template{
+		templates: template.Must(template.New("tmpl").Delims("{%", "%}").ParseGlob("audon-fe/dist/index.html")),
+	}
 
 	// Setup session middleware (currently Audon stores all client data in cookie)
 	log.Println("Connecting to Redis")
@@ -151,7 +159,12 @@ func main() {
 	api.PUT("/room/:room/:user", updatePermissionHandler)
 
 	e.Static("/assets", "audon-fe/dist/assets")
-	e.File("/*", "audon-fe/dist/index.html")
+	e.Static("/static", "audon-fe/dist/static")
+	e.GET("/r/:id", renderRoomHandler)
+	e.GET("/*", func(c echo.Context) error {
+		return c.Render(http.StatusOK, "tmpl", &TemplateData{Config: &mainConfig.AppConfigBase})
+	})
+	// e.File("/*", "audon-fe/dist/index.html")
 
 	// use anonymous func to support graceful shutdown
 	go func() {

@@ -152,6 +152,22 @@ func updateRoomHandler(c echo.Context) (err error) {
 	return c.JSON(http.StatusOK, room)
 }
 
+// handler for GET to /r/:id
+func renderRoomHandler(c echo.Context) error {
+	roomID := c.Param("id")
+	if err := mainValidator.Var(&roomID, "required,printascii"); err != nil {
+		return wrapValidationError(err)
+	}
+
+	room, err := findRoomByID(c.Request().Context(), roomID)
+	if err != nil {
+		return echo.NotFoundHandler(c)
+	}
+
+	return c.Render(http.StatusOK, "tmpl", &TemplateData{Config: &mainConfig.AppConfigBase, Room: room})
+}
+
+// for preview, this bypasses authentication
 func previewRoomHandler(c echo.Context) (err error) {
 	roomID := c.Param("id")
 	if err := mainValidator.Var(&roomID, "required,printascii"); err != nil {

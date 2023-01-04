@@ -23,7 +23,10 @@ export default {
 </script>
 
 <template>
-  <v-app class="fill-height">
+  <v-app style="min-height: 100%">
+    <div id="mascot" class="pa-3">
+      <img :draggable="false" src="./assets/img/mascot.png" />
+    </div>
     <v-system-bar window>
       <div class="d-flex justify-center align-center w-100">
         <RouterLink :to="{ name: 'home' }" class="d-flex align-center">
@@ -36,9 +39,6 @@ export default {
       </div>
     </v-system-bar>
     <v-main>
-      <div id="mascot" class="pa-3">
-        <img :draggable="false" src="./assets/img/mascot.png" />
-      </div>
       <v-container class="fill-height">
         <v-row
           align="center"
@@ -86,7 +86,7 @@ export default {
 
 <style>
 #mascot {
-  position: absolute;
+  position: fixed;
   bottom: 0;
   left: 0;
 }
