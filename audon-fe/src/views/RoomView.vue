@@ -101,7 +101,7 @@ export default {
       mainHeight: 700,
       roomClient: new Room(),
       roomInfo: {
-        title: "",
+        title: this.$t("connecting"),
         description: "",
         restriction: "",
         host: null,
