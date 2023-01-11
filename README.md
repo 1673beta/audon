@@ -42,7 +42,7 @@ git clone --recursive https://codeberg.org/nmkj/audon.git
 
 The followings config files are needed to run Audon.
 
-- `.end.production`
+- `.env.production`
 - `config/livekit.yaml`
 - `config/redis.conf`
 
