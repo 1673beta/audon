@@ -38,13 +38,13 @@ export default {
       return messages;
     },
     aboutLink() {
-      const base = new URL("https://codeberg.org/nmkj/audon/wiki/");
+      const base = new URL("https://codeberg.org/nmkj/audon/wiki");
       switch (this.$i18n.locale) {
         case "ja":
-          base.pathname.concat("ja");
+          base.pathname = base.pathname.concat("/ja");
           break;
       }
-      base.pathname.concat("Home");
+      base.pathname = base.pathname.concat("/Home");
       return base.toString();
     },
   },
@@ -109,6 +109,6 @@ export default {
     }}</v-btn>
   </v-form>
   <div class="w-100 text-right">
-    <a :href="aboutLink" class="plain" target="_blank">{{ $t("about") }}</a>
+    <a :href="aboutLink" target="_blank">{{ $t("about") }}</a>
   </div>
 </template>

@@ -3,6 +3,10 @@ import { RouterView, RouterLink } from "vue-router";
 import locales from "./locales";
 
 export default {
+  components: {
+    RouterView,
+    RouterLink,
+  },
   setup() {
     return {
       locales,

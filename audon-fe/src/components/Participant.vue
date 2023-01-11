@@ -8,15 +8,19 @@ export default {
     data: Object,
     muted: Boolean,
   },
-  data () {
+  data() {
     return {
       mdiMicrophone,
-      mdiMicrophoneOff
-    }
+      mdiMicrophoneOff,
+    };
   },
   computed: {
     canSpeak() {
-      return this.type === "host" || this.type === "cohost" || this.type === "speaker";
+      return (
+        this.type === "host" ||
+        this.type === "cohost" ||
+        this.type === "speaker"
+      );
     },
     badgeProps() {
       switch (this.type) {
@@ -33,8 +37,8 @@ export default {
         case "speaker":
           return {
             content: "Speaker",
-            colour: ""
-          }
+            colour: "",
+          };
         default:
           return {
             content: "",
@@ -44,8 +48,8 @@ export default {
     },
   },
   methods: {
-    webfinger
-  }
+    webfinger,
+  },
 };
 </script>
 
@@ -69,8 +73,13 @@ export default {
       <v-img :src="data?.avatar"></v-img>
     </v-avatar>
     <h4 :class="canSpeak ? 'mt-1' : 'mt-2'">
-      <v-icon v-if="canSpeak" :icon="muted ? mdiMicrophoneOff : mdiMicrophone"></v-icon>
-      <a :href="data?.url" class="plain" target="_blank">{{ data?.displayName ?? webfinger(data) }}</a>
+      <v-icon
+        v-if="canSpeak"
+        :icon="muted ? mdiMicrophoneOff : mdiMicrophone"
+      ></v-icon>
+      <a :href="data?.url" class="plain" target="_blank">{{
+        data?.displayName ?? webfinger(data)
+      }}</a>
     </h4>
   </v-col>
 </template>

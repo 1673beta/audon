@@ -32,7 +32,7 @@ export const useMastodonStore = defineStore("mastodon", {
       const client = await login({
         url: this.oauth.url,
         accessToken: this.oauth.token,
-        disableVersionCheck: true
+        disableVersionCheck: true,
       });
       this.client = client;
       this.userinfo = await client.accounts.verifyCredentials();

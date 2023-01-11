@@ -63,7 +63,6 @@ export default {
       mdiMicrophone,
       mdiMicrophoneOff,
       mdiMicrophoneQuestion,
-      mdiDoorClosed,
       mdiVolumeOff,
       mdiClose,
       mdiCheck,
@@ -163,14 +162,15 @@ export default {
               break;
             case 403:
               alert(this.$t("loginRequired"));
+              break;
             case 410:
               alert(this.$t("errors.alreadyClosed"));
-            default:
-              this.$router.push({
-                name: "login",
-                query: { l: `/r/${this.roomID}` },
-              });
+              break;
           }
+          this.$router.push({
+            name: "login",
+            query: { l: `/r/${this.roomID}` },
+          });
         } finally {
           this.loading = false;
         }
@@ -777,29 +777,13 @@ export default {
           <code>{{ timeElapsed }}</code>
         </v-chip>
         <div v-if="iamHost" class="flex-shrink-0">
-          <v-menu>
-            <template v-slot:activator="{ props }">
-              <v-btn
-                size="small"
-                variant="text"
-                color="white"
-                :icon="mdiDotsVertical"
-                v-bind="props"
-              ></v-btn>
-            </template>
-            <v-list>
-              <v-list-item
-                :title="$t('edit')"
-                :prepend-icon="mdiPencil"
-                @click="showEditDialog = true"
-              ></v-list-item>
-              <v-list-item
-                :title="$t('leaveRoom')"
-                :prepend-icon="mdiLogout"
-                @click="roomClient.disconnect()"
-              ></v-list-item>
-            </v-list>
-          </v-menu>
+          <v-btn
+            size="small"
+            variant="text"
+            color="white"
+            :icon="mdiPencil"
+            @click="showEditDialog = true"
+          ></v-btn>
         </div>
       </v-card-title>
       <div
@@ -866,13 +850,15 @@ export default {
           variant="flat"
           @click="onToggleMute"
         ></v-btn>
-        <v-btn v-if="iamHost"
-          :icon="mdiDoorClosed"
+        <v-btn
+          v-if="iamHost"
+          :icon="mdiLogout"
           color="red"
           @click="onRoomClose"
           variant="flat"
         ></v-btn>
-        <v-btn v-else
+        <v-btn
+          v-else
           :icon="mdiLogout"
           color="red"
           @click="roomClient.disconnect()"
@@ -900,5 +886,4 @@ export default {
   </main>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

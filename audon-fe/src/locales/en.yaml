@@ -19,7 +19,7 @@ connecting: "Connecting"
 server: "Your Mastodon instance"
 addressRequired: "Enter your instance address"
 createNewRoom: "Create a New Room"
-editRoom: "Edit the Room"
+editRoom: "Room Edit"
 comingFuture: "Coming with future update!"
 form:
   title: "Title"

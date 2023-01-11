@@ -37,12 +37,8 @@ export default {
 <template>
   <main>
     <div class="text-right">
-      <v-btn
-        variant="outlined"
-        color="red"
-        @click="onLogout"
-      >
-      {{ $t("logout") }}
+      <v-btn variant="outlined" color="red" @click="onLogout">
+        {{ $t("logout") }}
       </v-btn>
     </div>
     <div class="text-center my-10">
@@ -57,7 +53,9 @@ export default {
         {{ donStore.userinfo?.displayName }}
       </h2>
       <div>
-        <a :href="donStore.userinfo?.url" class="plain">{{ donStore.myWebfinger }}</a>
+        <a :href="donStore.userinfo?.url" class="plain">{{
+          donStore.myWebfinger
+        }}</a>
       </div>
     </div>
     <v-row class="text-center" justify="center">
@@ -65,7 +63,9 @@ export default {
         <v-text-field v-mode="query"></v-text-field>
       </v-col> -->
       <v-col cols="12">
-        <v-btn block :to="{ name: 'create' }" color="indigo">{{ $t("createNewRoom") }}</v-btn>
+        <v-btn block :to="{ name: 'create' }" color="indigo">{{
+          $t("createNewRoom")
+        }}</v-btn>
       </v-col>
     </v-row>
   </main>
