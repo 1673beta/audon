@@ -794,9 +794,9 @@ export default {
                 @click="showEditDialog = true"
               ></v-list-item>
               <v-list-item
-                :title="$t('closeRoom')"
-                :prepend-icon="mdiDoorClosed"
-                @click="onRoomClose"
+                :title="$t('leaveRoom')"
+                :prepend-icon="mdiLogout"
+                @click="roomClient.disconnect()"
               ></v-list-item>
             </v-list>
           </v-menu>
@@ -866,7 +866,13 @@ export default {
           variant="flat"
           @click="onToggleMute"
         ></v-btn>
-        <v-btn
+        <v-btn v-if="iamHost"
+          :icon="mdiDoorClosed"
+          color="red"
+          @click="onRoomClose"
+          variant="flat"
+        ></v-btn>
+        <v-btn v-else
           :icon="mdiLogout"
           color="red"
           @click="roomClient.disconnect()"
