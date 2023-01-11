@@ -1,5 +1,4 @@
 <script>
-import { RouterLink } from "vue-router";
 import { useVuelidate } from "@vuelidate/core";
 import { required, helpers, email, or } from "@vuelidate/validators";
 import { validators } from "../assets/utils";
@@ -25,7 +24,7 @@ export default {
         hostname: helpers.withMessage(
           this.$t("errors.invalidAddress"),
           or(validators.fqdn, email)
-        )
+        ),
       },
     };
   },
@@ -38,11 +37,21 @@ export default {
       }
       return messages;
     },
+    aboutLink() {
+      const base = new URL("https://codeberg.org/nmkj/audon/wiki/");
+      switch (this.$i18n.locale) {
+        case "ja":
+          base.pathname.concat("ja");
+          break;
+      }
+      base.pathname.concat("Home");
+      return base.toString();
+    },
   },
   methods: {
     async onSubmit() {
       if (this.server.includes("@")) {
-        this.server = this.server.split("@", 2)[1]
+        this.server = this.server.split("@", 2)[1];
       }
       const isFormCorrect = await this.v$.$validate();
       if (!isFormCorrect) {
@@ -73,7 +82,12 @@ export default {
 
 <template>
   <div class="text-center mb-8">
-    <img src="../assets/img/audon-wordmark-white-text.svg" :draggable="false" alt="Branding Wordmark" style="width: 100%; max-width: 200px;" />
+    <img
+      src="../assets/img/audon-wordmark-white-text.svg"
+      :draggable="false"
+      alt="Branding Wordmark"
+      style="width: 100%; max-width: 200px"
+    />
   </div>
   <v-alert v-if="$route.query.l" type="warning" variant="text">
     <div>{{ $t("loginRequired") }}</div>
@@ -90,11 +104,11 @@ export default {
       type="url"
       clearable
     />
-    <v-btn block @click="onSubmit" :disabled="!v$.$dirty || v$.$error"
-      >{{ $t("login") }}</v-btn
-    >
+    <v-btn block @click="onSubmit" :disabled="!v$.$dirty || v$.$error">{{
+      $t("login")
+    }}</v-btn>
   </v-form>
   <div class="w-100 text-right">
-    <RouterLink to="/about">{{ $t("about") }}</RouterLink>
+    <a :href="aboutLink" class="plain" target="_blank">{{ $t("about") }}</a>
   </div>
 </template>
