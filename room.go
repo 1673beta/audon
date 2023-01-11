@@ -174,6 +174,11 @@ func previewRoomHandler(c echo.Context) (err error) {
 		return wrapValidationError(err)
 	}
 
+	room, _ := findRoomByID(c.Request().Context(), roomID)
+	if room != nil && !room.EndedAt.IsZero() && room.EndedAt.Before(time.Now()) {
+		return ErrAlreadyEnded
+	}
+
 	lkRoom, _ := getRoomInLivekit(c.Request().Context(), roomID)
 	if lkRoom == nil {
 		return ErrRoomNotFound

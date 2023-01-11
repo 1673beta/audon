@@ -163,6 +163,8 @@ export default {
               break;
             case 403:
               alert(this.$t("loginRequired"));
+            case 410:
+              alert(this.$t("errors.alreadyClosed"));
             default:
               this.$router.push({
                 name: "login",
