@@ -1,11 +1,10 @@
 {
   "name": "audon-fe",
-  "version": "0.1.0-dev",
+  "version": "0.1.0-alpha",
   "private": true,
   "scripts": {
     "dev": "cp -v index.dev.html index.html && vite",
     "build": "cp -v index.prod.html index.html && vite build",
-    "hash": "sh -c 'sed -i -e \"s/%%VERSION%%/git-$(git rev-parse --short HEAD)/\" dist/index.html'",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
   },

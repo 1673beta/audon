@@ -3,11 +3,9 @@ FROM node:18-bullseye
 WORKDIR /workspace
 
 COPY audon-fe/ /workspace/
-COPY .git /workspace/.git
 
 RUN npm install && \
-    npm run build && \
-    npm run hash
+    npm run build
 
 FROM golang:1.19-bullseye
 
