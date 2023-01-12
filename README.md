@@ -1,11 +1,11 @@
 <div align="center">
-    <img src="audon-fe/src/assets/img/audon-wordmark-white-text-isolated.svg" alt="Branding Logo" align="center" />
+    <img src="audon-fe/src/assets/img/audon-wordmark-white-text-isolated.svg" alt="Branding Logo" align="center" title="Branding logo designed by GENKI" />
 </div>
 
 ----
 
 <div align="right">
-    <img src="audon-fe/src/assets/img/mascot.webp" alt="Mascot" width="150" align="right" />
+    <img src="audon-fe/src/assets/img/mascot.webp" alt="Mascot" width="150" align="right" title="Mascot designed by Taiyo Fujii" />
 </div>
 
 Audio + Mastodon = Audon
