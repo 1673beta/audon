@@ -1,4 +1,8 @@
-# Audon
+<div align="center">
+    <img src="audon-fe/src/assets/img/audon-wordmark-white-text-isolated.svg" alt="Branding Logo" align="center" />
+</div>
+
+----
 
 Audio + Mastodon = Audon
 

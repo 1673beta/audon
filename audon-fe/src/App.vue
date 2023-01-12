@@ -29,7 +29,7 @@ export default {
 <template>
   <v-app style="min-height: 100%">
     <div id="mascot" class="pa-3">
-      <img :draggable="false" src="./assets/img/mascot.png" />
+      <img :draggable="false" src="./assets/img/mascot.webp" />
     </div>
     <v-system-bar window>
       <div class="d-flex justify-center align-center w-100">
