@@ -4,6 +4,10 @@
 
 ----
 
+<div align="right">
+    <img src="audon-fe/src/assets/img/mascot.webp" alt="Mascot" width="150" align="right" />
+</div>
+
 Audio + Mastodon = Audon
 
 Audon is a service for Mastodon (and Pleroma) users to create and join rooms of live audio conversations.
