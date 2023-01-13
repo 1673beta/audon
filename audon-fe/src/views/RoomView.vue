@@ -3,12 +3,13 @@ import axios from "axios";
 import { pushNotFound, webfinger } from "../assets/utils";
 import { useMastodonStore } from "../stores/mastodon";
 import { map, some, omit, filter, trim, clone } from "lodash-es";
+import { darkTheme } from "picmo";
+import { createPopup } from "@picmo/popup-picker";
 import Participant from "../components/Participant.vue";
 import {
   mdiMicrophone,
   mdiMicrophoneOff,
   mdiMicrophoneQuestion,
-  mdiDoorClosed,
   mdiVolumeOff,
   mdiClose,
   mdiCheck,
@@ -16,6 +17,7 @@ import {
   mdiLogout,
   mdiDotsVertical,
   mdiPencil,
+  mdiEmoticon,
 } from "@mdi/js";
 import {
   Room,
@@ -68,10 +70,13 @@ export default {
       mdiCheck,
       mdiDotsVertical,
       mdiPencil,
+      mdiEmoticon,
       v$: useVuelidate(),
       donStore: useMastodonStore(),
       decoder: new TextDecoder(),
       encoder: new TextEncoder(),
+      roomClient: new Room(),
+      emojiPicker: null,
     };
   },
   components: {
@@ -98,7 +103,6 @@ export default {
       roomID: this.$route.params.id,
       loading: true,
       mainHeight: 700,
-      roomClient: new Room(),
       roomInfo: {
         title: this.$t("connecting"),
         description: "",
@@ -122,6 +126,7 @@ export default {
         { title: this.$t("form.relationships.private"), value: "private" },
       ],
       participants: {},
+      emojiReactions: {},
       cachedMastoData: {},
       activeSpeakerIDs: new Set(),
       mutedSpeakerIDs: new Set(),
@@ -315,11 +320,15 @@ export default {
               { "kind": "speak_request" }
               { "kind": "chat", "data": "..." }
               { "kind": "request_declined", "audon_id": "..."}
+              { "kind": "emoji", "emoji": "..." }
               */
               const strData = self.decoder.decode(payload);
               const jsonData = JSON.parse(strData);
               const metadata = JSON.parse(participant.metadata);
               switch (jsonData?.kind) {
+                case "emoji":
+                  self.addEmojiReaction(participant.identity, jsonData.emoji);
+                  break;
                 case "speak_request": // someone is wanting to be a speaker
                   self.onSpeakRequestReceived(participant);
                   break;
@@ -495,6 +504,53 @@ export default {
         await this.publishDataToHostAndCohosts({ kind: "speak_request" });
         this.showRequestedNotification = true;
       }
+    },
+    onPickerPopup() {
+      const btn = document.getElementById("pickerButton");
+      if (!this.emojiPicker) {
+        const picker = createPopup(
+          {
+            theme: darkTheme,
+            emojiSize: "1.8rem",
+            autoFocus: "none",
+          },
+          {
+            referenceElement: btn,
+            triggerElement: btn,
+            position: "top",
+            hideOnEmojiSelect: true,
+          }
+        );
+        const self = this;
+        picker.addEventListener("emoji:select", ({ emoji }) => {
+          self.onEmojiSelected(emoji);
+        });
+        this.emojiPicker = picker;
+      }
+      this.emojiPicker.open();
+    },
+    async onEmojiSelected(emoji) {
+      this.showEmojiMenu = false;
+      const data = { kind: "emoji", emoji };
+      const payload = this.encoder.encode(JSON.stringify(data));
+      await this.roomClient.localParticipant.publishData(
+        payload,
+        DataPacket_Kind.RELIABLE
+      );
+      this.addEmojiReaction(this.roomClient.localParticipant.identity, emoji);
+    },
+    addEmojiReaction(identity, emoji) {
+      const self = this;
+      if (self.emojiReactions[identity]) {
+        clearTimeout(self.emojiReactions[identity].timeoutID);
+      }
+      const timeoutID = setTimeout(() => {
+        self.emojiReactions = omit(self.emojiReactions, identity);
+      }, 5000);
+      self.emojiReactions[identity] = {
+        timeoutID,
+        emoji,
+      };
     },
     async publishDataToHostAndCohosts(data) {
       const payload = this.encoder.encode(JSON.stringify(data));
@@ -807,6 +863,7 @@ export default {
               type="host"
               :data="cachedMastoData[key]"
               :muted="mutedSpeakerIDs.has(key)"
+              :emoji="emojiReactions[key]?.emoji"
             ></Participant>
             <Participant
               v-if="isCohost(value)"
@@ -814,6 +871,7 @@ export default {
               type="cohost"
               :data="cachedMastoData[key]"
               :muted="mutedSpeakerIDs.has(key)"
+              :emoji="emojiReactions[key]?.emoji"
             ></Participant>
             <Participant
               v-if="isSpeaker(key)"
@@ -821,6 +879,7 @@ export default {
               type="speaker"
               :data="cachedMastoData[key]"
               :muted="mutedSpeakerIDs.has(key)"
+              :emoji="emojiReactions[key]?.emoji"
             >
             </Participant>
           </template>
@@ -831,6 +890,7 @@ export default {
               v-if="!isHost(key) && !isCohost(value) && !isSpeaker(key)"
               :data="cachedMastoData[key]"
               type="listener"
+              :emoji="emojiReactions[key]?.emoji"
             ></Participant>
           </template>
         </v-row>
@@ -845,7 +905,15 @@ export default {
           >{{ $t("enterRoom") }}</v-btn
         >
       </v-card-actions>
-      <v-card-actions v-else class="justify-center" style="gap: 50px">
+      <v-card-actions v-else class="justify-center" style="gap: 20px">
+        <v-btn
+          :icon="mdiEmoticon"
+          color="white"
+          variant="flat"
+          @click="onPickerPopup"
+          id="pickerButton"
+        >
+        </v-btn>
         <v-btn
           :icon="micStatusIcon"
           color="white"

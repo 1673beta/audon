@@ -2,19 +2,24 @@
 import { mdiMicrophone, mdiMicrophoneOff } from "@mdi/js";
 import { webfinger } from "../assets/utils";
 export default {
+  setup() {
+    return {
+      mdiMicrophone,
+      mdiMicrophoneOff,
+      webfinger,
+    };
+  },
   props: {
     talking: Boolean,
     type: String,
     data: Object,
     muted: Boolean,
-  },
-  data() {
-    return {
-      mdiMicrophone,
-      mdiMicrophoneOff,
-    };
+    emoji: String,
   },
   computed: {
+    showEmoji() {
+      return this.emoji !== undefined;
+    },
     canSpeak() {
       return (
         this.type === "host" ||
@@ -47,9 +52,6 @@ export default {
       }
     },
   },
-  methods: {
-    webfinger,
-  },
 };
 </script>
 
@@ -62,6 +64,17 @@ export default {
       :color="badgeProps.colour"
     >
       <v-avatar :class="{ rounded: true, talk: talking }" size="70">
+        <v-overlay
+          v-model="showEmoji"
+          contained
+          persistent
+          scroll-strategy="none"
+          no-click-animation
+          scrim="#000000"
+          class="align-center justify-center reaction"
+        >
+          <span>{{ emoji }}</span>
+        </v-overlay>
         <v-img :src="data?.avatar"></v-img>
       </v-avatar>
     </v-badge>
@@ -70,6 +83,17 @@ export default {
       :class="{ rounded: true, talk: talking, 'mt-2': true }"
       size="70"
     >
+      <v-overlay
+        v-model="showEmoji"
+        contained
+        persistent
+        scroll-strategy="none"
+        no-click-animation
+        scrim="#000000"
+        class="align-center justify-center reaction"
+      >
+        <span>{{ emoji }}</span>
+      </v-overlay>
       <v-img :src="data?.avatar"></v-img>
     </v-avatar>
     <h4 :class="canSpeak ? 'mt-1' : 'mt-2'">
@@ -87,5 +111,11 @@ export default {
 <style scoped>
 .talk {
   outline: 3px solid cornflowerblue;
+}
+
+.reaction span {
+  font-size: 2rem;
+  color: white;
+  text-align: center;
 }
 </style>
