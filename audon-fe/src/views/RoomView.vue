@@ -167,7 +167,6 @@ export default {
               pushNotFound(this.$route);
               break;
             case 403:
-              alert(this.$t("loginRequired"));
               break;
             case 410:
               alert(this.$t("errors.alreadyClosed"));

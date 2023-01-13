@@ -1,6 +1,7 @@
 <script>
 import { mdiMicrophone, mdiMicrophoneOff } from "@mdi/js";
 import { webfinger } from "../assets/utils";
+
 export default {
   setup() {
     return {
@@ -102,7 +103,7 @@ export default {
         :icon="muted ? mdiMicrophoneOff : mdiMicrophone"
       ></v-icon>
       <a :href="data?.url" class="plain" target="_blank">{{
-        data?.displayName ?? webfinger(data)
+        !data?.displayName ? data?.acct : data?.displayName
       }}</a>
     </h4>
   </v-col>
