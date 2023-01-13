@@ -30,13 +30,13 @@
     {% if .Room %}
     <meta name="twitter:title" content='{% printf "%.60s" .Room.Title %}'>
     {% if .Room.Description %}
-    <meta property="twitter:description" content='{% printf "%.150s" .Room.Description %}'>
+    <meta name="twitter:description" content='{% printf "%.150s" .Room.Description %}'>
     {% else %}
-    <meta property="twitter:description" content='Audon: audio conversation, radio talk room for Mastodon (and Pleroma)'>
+    <meta name="twitter:description" content='Audon: audio conversation, radio talk room for Mastodon (and Pleroma)'>
     {% end %}
     {% else %}
-    <meta property="twitter:title" content='Audon'>
-    <meta property="twitter:description" content='Audio conversation, radio talk room for Mastodon (and Pleroma)'>
+    <meta name="twitter:title" content='Audon'>
+    <meta name="twitter:description" content='Audio conversation, radio talk room for Mastodon (and Pleroma)'>
     {% end %}
   </head>
   <body>
