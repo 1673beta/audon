@@ -156,6 +156,7 @@ export default {
             }
           }
         } catch (error) {
+          let query = { l: `/r/${this.roomID}` };
           switch (error.response?.status) {
             case 404:
               pushNotFound(this.$route);
@@ -165,11 +166,12 @@ export default {
               break;
             case 410:
               alert(this.$t("errors.alreadyClosed"));
+              query = undefined;
               break;
           }
           this.$router.push({
             name: "login",
-            query: { l: `/r/${this.roomID}` },
+            query,
           });
         } finally {
           this.loading = false;
