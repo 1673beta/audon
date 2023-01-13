@@ -513,6 +513,7 @@ export default {
             theme: darkTheme,
             emojiSize: "1.8rem",
             autoFocus: "none",
+            showPreview: false,
           },
           {
             referenceElement: btn,
