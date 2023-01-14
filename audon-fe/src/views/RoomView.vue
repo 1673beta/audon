@@ -35,6 +35,7 @@ import NoSleep from "@uriopass/nosleep.js";
 import { DateTime } from "luxon";
 import boopSound from "../assets/boop.oga";
 import messageSound from "../assets/message.oga";
+import requestSound from "../assets/request.oga";
 
 const publishOpts = {
   audioBitrate: AudioPresets.music,
@@ -89,6 +90,10 @@ export default {
           src: [messageSound],
           volume: 0.15,
         }),
+        request: new Howl({
+          src: [requestSound],
+          volume: 0.4,
+        })
       },
     };
   },
@@ -495,6 +500,7 @@ export default {
         if (this.speakRequests.has(participant.identity)) return;
         this.speakRequests.add(participant.identity);
         this.showRequestNotification = true;
+        this.sounds.request.play();
       }
     },
     async onAcceptRequest(identity) {
