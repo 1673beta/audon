@@ -63,7 +63,7 @@ speakRequest:
   norequest: "Pas de demande"
   sent: "Demande envoyée!"
   receive: "Nouvelle demande de parole reçue !"
-microphoneBlocked: "Votre navigateur a bloqué l'accès au microphone."
+microphoneBlocked: "Votre navigateur a bloqué l'accès au microphone. Vérifiez les paramètres d'autorisation de votre appareil et de votre navigateur."
 closeRoomConfirm: "Vous êtes sûr de vouloir fermer cette salle ?"
 roomEvent:
   closedByHost: "L'hôte a fermé cette salle."

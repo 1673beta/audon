@@ -5,6 +5,7 @@ import { useMastodonStore } from "../stores/mastodon";
 import { map, some, omit, filter, trim, clone } from "lodash-es";
 import { darkTheme } from "picmo";
 import { createPopup } from "@picmo/popup-picker";
+import { Howl } from "howler";
 import Participant from "../components/Participant.vue";
 import {
   mdiMicrophone,
@@ -32,6 +33,8 @@ import { useVuelidate } from "@vuelidate/core";
 import { helpers, maxLength, required } from "@vuelidate/validators";
 import NoSleep from "@uriopass/nosleep.js";
 import { DateTime } from "luxon";
+import boopSound from "../assets/boop.oga";
+import messageSound from "../assets/message.oga";
 
 const publishOpts = {
   audioBitrate: AudioPresets.music,
@@ -77,6 +80,16 @@ export default {
       encoder: new TextEncoder(),
       roomClient: new Room(),
       emojiPicker: null,
+      sounds: {
+        boop: new Howl({
+          src: [boopSound],
+          volume: 0.4,
+        }),
+        message: new Howl({
+          src: [messageSound],
+          volume: 0.15,
+        }),
+      },
     };
   },
   components: {
@@ -278,6 +291,7 @@ export default {
             self.activeSpeakerIDs = new Set(map(speakers, (p) => p.identity));
           })
           .on(RoomEvent.ParticipantConnected, (participant) => {
+            if (self.iamHost || self.iamCohost) self.sounds.boop.play();
             const metadata = self.addParticipant(participant);
             if (metadata !== null) {
               self.fetchMastoData(participant.identity, metadata);
@@ -541,6 +555,8 @@ export default {
     },
     addEmojiReaction(identity, emoji) {
       const self = this;
+      if (self.iamHost || self.iamCohost || self.iamSpeaker)
+        self.sounds.message.play();
       if (self.emojiReactions[identity]) {
         clearTimeout(self.emojiReactions[identity].timeoutID);
       }

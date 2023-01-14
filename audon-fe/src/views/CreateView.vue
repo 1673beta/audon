@@ -100,6 +100,7 @@ export default {
       ];
       if (this.description)
         texts.push(truncate("\n" + this.description, { length: 200 }));
+      texts.push("\n#Audon");
       return encodeURI(`${url.origin}/share?text=${texts.join("\n")}`);
     },
   },

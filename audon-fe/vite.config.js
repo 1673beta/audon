@@ -15,6 +15,7 @@ export default defineConfig({
       include: "./src/locales/*.yaml",
     }),
   ],
+  assetsInclude: ["**/*.oga"],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
