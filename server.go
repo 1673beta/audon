@@ -22,6 +22,7 @@ import (
 	"github.com/labstack/echo/v4"
 	lksdk "github.com/livekit/server-sdk-go"
 	"github.com/mattn/go-mastodon"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/rbcervilla/redisstore/v9"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -50,6 +51,7 @@ var (
 	mainValidator                       = validator.New()
 	mainConfig          *AppConfig
 	lkRoomServiceClient *lksdk.RoomServiceClient
+	localeBundle        *i18n.Bundle
 )
 
 func init() {
@@ -68,6 +70,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed loading config values: %s\n", err.Error())
 	}
+
+	// Load locales
+	localeBundle = initLocaleBundle()
 
 	// Setup Livekit RoomService Client
 	lkURL := &url.URL{

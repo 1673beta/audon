@@ -65,6 +65,7 @@ export default {
       },
       isSubmissionLoading: false,
       createdRoomID: "",
+      advertise: true,
     };
   },
   validations() {
@@ -121,6 +122,9 @@ export default {
       this.isCandiadateLoading = true;
       this.cohostSearch(val);
     },
+    relationship(to) {
+      this.advertise = to === "everyone";
+    }
   },
   methods: {
     async search(val) {
@@ -172,6 +176,10 @@ export default {
           remote_url: u.url,
         })),
         restriction: this.relationship,
+        advertise:
+          this.advertise && this.relationship === "everyone"
+            ? this.$i18n.locale
+            : "",
       };
       this.isSubmissionLoading = false;
       try {
@@ -364,10 +372,31 @@ export default {
               disabled
               :messages="[$t('comingFuture')]"
             ></v-text-field>
+            <v-checkbox
+              v-model="advertise"
+              :disabled="relationship !== 'everyone'"
+              density="compact"
+            >
+              <template v-slot:label>
+                <i18n-t keypath="form.advertise" tag="div">
+                  <template v-slot:bot>
+                    <a href="https://gts.audon.space/@now" target="_blank"
+                      >now@audon.space</a
+                    >
+                  </template>
+                </i18n-t>
+              </template>
+            </v-checkbox>
           </v-form>
         </v-card-text>
         <v-card-actions>
-          <v-btn block color="indigo" @click="onSubmit" variant="flat">
+          <v-btn
+            block
+            :disabled="isSubmissionLoading"
+            color="indigo"
+            @click="onSubmit"
+            variant="flat"
+          >
             {{ $t("create") }}
           </v-btn>
         </v-card-actions>

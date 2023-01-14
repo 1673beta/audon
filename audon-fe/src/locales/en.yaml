@@ -29,6 +29,7 @@ form:
   cohosts: "Cohosts"
   cohostCanAlwaysJoin: "Cohosts can join regardless of this setting."
   schedule: "Schedule at"
+  advertise: "Allow the bot ({bot}) to advertise your room"
   relationships:
     everyone: "Everyone"
     following: "Followed accounts only"

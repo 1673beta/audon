@@ -28,6 +28,7 @@ form:
   cohosts: "共同ホスト"
   cohostCanAlwaysJoin: "共同ホストは制限に関わらず入室できます。"
   schedule: "開始予約"
+  advertise: "Bot（{bot}）による部屋の宣伝を許可する"
   relationships:
     everyone: "制限なし"
     following: "あなたのフォロー限定"

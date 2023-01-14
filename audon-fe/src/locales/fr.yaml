@@ -29,6 +29,7 @@ form:
   cohosts: "Cohôtes"
   cohostCanAlwaysJoin: "Cohôtes peuvent s'y joindre, quel que soit le paramètre de confidentialité."
   schedule: "Programmée à"
+  advertise: "Autorisez le robot ({bot}) à faire de la publicité pour votre salle"
   relationships:
     everyone: "Tout le monde"
     following: "Vos abonnements"

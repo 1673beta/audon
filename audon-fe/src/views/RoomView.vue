@@ -84,15 +84,15 @@ export default {
       sounds: {
         boop: new Howl({
           src: [boopSound],
-          volume: 0.4,
+          volume: 0.7,
         }),
         message: new Howl({
           src: [messageSound],
-          volume: 0.15,
+          volume: 0.3,
         }),
         request: new Howl({
           src: [requestSound],
-          volume: 0.4,
+          volume: 0.7,
         })
       },
     };

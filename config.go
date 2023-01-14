@@ -14,6 +14,7 @@ type (
 		MongoURL *url.URL
 		Database *DBConfig
 		Redis    *RedisConfig
+		Bot      *BotConfig
 	}
 
 	AppConfigBase struct {
@@ -40,6 +41,14 @@ type (
 		Host     string `validate:"required,hostname_port"`
 		User     string `validate:"printascii"`
 		Password string `validate:"printascii"`
+	}
+
+	BotConfig struct {
+		Enable       bool
+		Server       *url.URL
+		ClientID     string
+		ClientSecret string
+		AccessToken  string
 	}
 )
 
@@ -123,6 +132,23 @@ func loadConfig(envname string) (*AppConfig, error) {
 	}
 	lkConf.URL = lkURL
 	appConf.Livekit = lkConf
+
+	// Setup Notification Bot config
+	botHost := os.Getenv("BOT_SERVER")
+	botConf := &BotConfig{
+		Enable:       botHost != "",
+		ClientID:     os.Getenv("BOT_CLIENT_ID"),
+		ClientSecret: os.Getenv("BOT_CLIENT_SECRET"),
+		AccessToken:  os.Getenv("BOT_ACCESS_TOKEN"),
+	}
+	if botConf.Enable {
+		botConf.Server = &url.URL{
+			Host:   botHost,
+			Scheme: "https",
+			Path:   "/",
+		}
+	}
+	appConf.Bot = botConf
 
 	return &appConf, nil
 }

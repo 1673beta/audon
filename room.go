@@ -4,13 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jaevor/go-nanoid"
 	"github.com/labstack/echo/v4"
 	"github.com/livekit/protocol/auth"
 	"github.com/livekit/protocol/livekit"
+	mastodon "github.com/mattn/go-mastodon"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -337,6 +341,45 @@ func joinRoomHandler(c echo.Context) (err error) {
 		if err != nil {
 			c.Logger().Error(err)
 			return echo.NewHTTPError(http.StatusConflict)
+		}
+
+		if mainConfig.Bot.Enable && room.Advertise != "" {
+			botClient := mastodon.NewClient(&mastodon.Config{
+				Server:       mainConfig.Bot.Server.String(),
+				ClientID:     mainConfig.Bot.ClientID,
+				ClientSecret: mainConfig.Bot.ClientSecret,
+				AccessToken:  mainConfig.Bot.AccessToken,
+			})
+			botClient.UserAgent = USER_AGENT
+
+			localizer := i18n.NewLocalizer(localeBundle, room.Advertise)
+			header := localizer.MustLocalize(&i18n.LocalizeConfig{
+				DefaultMessage: &i18n.Message{
+					ID:    "Advertise",
+					Other: "@{{.Host}} is now hosting Audon!",
+				},
+				TemplateData: map[string]string{
+					"Host": room.Host.Webfinger,
+				},
+			})
+
+			messages := []string{
+				header,
+				fmt.Sprintf("🎙 %s\n🔗 https://%s/r/%s", room.Title, mainConfig.LocalDomain, room.RoomID),
+			}
+			if room.Description != "" {
+				messages = append(messages, room.Description)
+			}
+			messages = append(messages, "#Audon")
+			message := strings.Join(messages, "\n\n")
+
+			if _, err := botClient.PostStatus(c.Request().Context(), &mastodon.Toot{
+				Status:     message,
+				Language:   room.Advertise,
+				Visibility: "public",
+			}); err != nil {
+				c.Logger().Error(err)
+			}
 		}
 	}
 

@@ -13,10 +13,13 @@ require (
 	github.com/livekit/protocol v1.2.3
 	github.com/livekit/server-sdk-go v1.0.5
 	github.com/mattn/go-mastodon v0.0.6
+	github.com/nicksnyder/go-i18n/v2 v2.2.1
 	github.com/oklog/ulid/v2 v2.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/rbcervilla/redisstore/v9 v9.0.0-rc1
 	go.mongodb.org/mongo-driver v1.11.0
+	golang.org/x/text v0.4.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -87,13 +90,11 @@ require (
 	go.uber.org/zap v1.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20221010152910-d6f0a8c073c2 // indirect
 	golang.org/x/net v0.2.0 // indirect
-	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
 	golang.org/x/sys v0.2.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	google.golang.org/genproto v0.0.0-20200825200019-8632dd797987 // indirect
 	google.golang.org/grpc v1.50.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
