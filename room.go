@@ -343,7 +343,8 @@ func joinRoomHandler(c echo.Context) (err error) {
 			return echo.NewHTTPError(http.StatusConflict)
 		}
 
-		if mainConfig.Bot.Enable && room.Advertise != "" {
+		// Have the bot advertise the room
+		if mainConfig.Bot.Enable && room.Advertise != "" && room.Restriction == EVERYONE {
 			botClient := mastodon.NewClient(&mastodon.Config{
 				Server:       mainConfig.Bot.Server.String(),
 				ClientID:     mainConfig.Bot.ClientID,
