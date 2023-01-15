@@ -25,6 +25,7 @@ WORKDIR /audon
 
 COPY --from=0 /workspace/dist /audon/audon-fe/dist
 COPY --from=1 /workspace/audon-bin /audon/
+COPY /workspace/locales /audon/locales
 
 RUN echo "Etc/UTC" > /etc/localtime && \
     apt-get update && apt-get upgrade -y && \
