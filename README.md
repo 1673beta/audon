@@ -10,7 +10,7 @@
 
 Audio + Mastodon = Audon
 
-Audon is a service of realtime audio streaming for Mastodon users.
+Audon is a service of realtime audio streaming for Mastodon.
 
 ## Tech Stack
 

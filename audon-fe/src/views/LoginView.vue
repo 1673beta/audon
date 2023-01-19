@@ -81,13 +81,16 @@ export default {
 </script>
 
 <template>
-  <div class="text-center mb-8">
+  <div class="text-center mb-7">
     <img
       src="../assets/img/audon-wordmark-white-text.svg"
       :draggable="false"
       alt="Branding Wordmark"
       style="width: 100%; max-width: 200px"
     />
+    <p class="mt-2">
+      Audio spaces for Mastodon
+    </p>
   </div>
   <v-alert v-if="$route.query.l" type="warning" variant="text">
     <div>{{ $t("loginRequired") }}</div>
