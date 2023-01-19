@@ -6,7 +6,7 @@
   // "image": "mcr.microsoft.com/devcontainers/universal:2-linux"
   "dockerComposeFile": "docker-compose.dev.yaml",
   "service": "devcontainer",
-  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}"
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
   // Features to add to the dev container. More info: https://containers.dev/features.
   // "features": {},
@@ -18,7 +18,16 @@
   // "postCreateCommand": "uname -a",
 
   // Configure tool-specific properties.
-  // "customizations": {},
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "Vue.volar",
+        "esbenp.prettier-vscode",
+        "EditorConfig.EditorConfig"
+      ]
+    }
+  }
 
   // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
   // "remoteUser": "root"

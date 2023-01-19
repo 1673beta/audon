@@ -5,16 +5,11 @@ services:
     image: "mcr.microsoft.com/devcontainers/universal:2-linux"
     volumes:
       - ../..:/workspaces:cached
-    networks:
-      - internal_network
-      - external_network
     command: sleep infinity
 
   db:
     image: mongo:6
     restart: unless-stopped
-    networks:
-      - internal_network
     # ports:
     #   - "27017:27017"
     environment:
@@ -24,9 +19,6 @@ services:
   mongo-express:
     image: mongo-express
     restart: unless-stopped
-    networks:
-      - internal_network
-      - external_network
     ports:
       - 8081:8081
     environment:
@@ -38,17 +30,12 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     command: redis-server
-    networks:
-      - internal_network
     # ports:
     #   - "6379:6379"
 
   redisinsight:
     image: redislabs/redisinsight:latest
     restart: unless-stopped
-    networks:
-      - internal_network
-      - external_network
     ports:
       - 8082:8001
 
@@ -59,9 +46,6 @@ services:
     ports:
       - "7881:7881"
       - "7882:7882/udp"
-    networks:
-      - internal_network
-      - external_network
 
   caddy:
     image: caddy:2
@@ -70,14 +54,6 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"
-    networks:
-      - internal_network
-      - external_network
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./certs:/etc/caddy/certs:ro
-
-networks:
-  external_network:
-  internal_network:
-    internal: true

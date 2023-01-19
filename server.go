@@ -79,6 +79,9 @@ func main() {
 		Scheme: "https",
 		Host:   mainConfig.Livekit.Host,
 	}
+	if mainConfig.Environment == "development" {
+		lkURL.Scheme = "http"
+	}
 	lkRoomServiceClient = lksdk.NewRoomServiceClient(lkURL.String(), mainConfig.Livekit.APIKey, mainConfig.Livekit.APISecret)
 
 	backContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
