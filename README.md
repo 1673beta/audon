@@ -10,7 +10,7 @@
 
 Audio + Mastodon = Audon
 
-Audon is a service for Mastodon (and Pleroma) users to create and join rooms of live audio conversations.
+Audon is a service of realtime audio streaming for Mastodon users.
 
 ## Tech Stack
 
