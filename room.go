@@ -357,7 +357,7 @@ func joinRoomHandler(c echo.Context) (err error) {
 			header := localizer.MustLocalize(&i18n.LocalizeConfig{
 				DefaultMessage: &i18n.Message{
 					ID:    "Advertise",
-					Other: "@{{.Host}} is now hosting Audon!",
+					Other: "@{{.Host}} is streaming now!",
 				},
 				TemplateData: map[string]string{
 					"Host": room.Host.Webfinger,
