@@ -1,0 +1,19 @@
+audon.localhost {
+    tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem
+    encode zstd gzip
+    @backend {
+            path /app/* /api/*
+    }
+    handle @backend {
+            reverse_proxy devcontainer:8100
+    }
+    handle {
+            reverse_proxy devcontainer:5173
+    }
+}
+
+livekit.audon.localhost {
+    tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem
+    encode zstd gzip
+    reverse_proxy livekit:7880
+}

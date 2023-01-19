@@ -13,7 +13,7 @@ WORKDIR /workspace
 
 COPY go.mod /workspace/go.mod
 COPY go.sum /workspace/go.sum
-RUN go mod download
+RUN go mod download -x
 
 COPY *.go /workspace/
 
