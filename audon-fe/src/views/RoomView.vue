@@ -93,7 +93,7 @@ export default {
         request: new Howl({
           src: [requestSound],
           volume: 0.7,
-        })
+        }),
       },
     };
   },
@@ -561,8 +561,6 @@ export default {
     },
     addEmojiReaction(identity, emoji) {
       const self = this;
-      if (self.iamHost || self.iamCohost || self.iamSpeaker)
-        self.sounds.message.play();
       if (self.emojiReactions[identity]) {
         clearTimeout(self.emojiReactions[identity].timeoutID);
       }
@@ -573,6 +571,7 @@ export default {
         timeoutID,
         emoji,
       };
+      self.sounds.message.play();
     },
     async publishDataToHostAndCohosts(data) {
       const payload = this.encoder.encode(JSON.stringify(data));

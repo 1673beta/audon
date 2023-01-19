@@ -91,7 +91,7 @@ export default {
 <style>
 #mascot {
   position: fixed;
-  bottom: 0;
+  bottom: 20px;
   left: 0;
 }
 
