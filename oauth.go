@@ -210,12 +210,9 @@ func logoutHandler(c echo.Context) (err error) {
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 		request.Header.Add("User-Agent", USER_AGENT)
-		resp, err := http.DefaultClient.Do(request)
-		if err == nil && resp.StatusCode == http.StatusOK {
-			return c.NoContent(http.StatusOK)
-		}
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusBadRequest)
+		http.DefaultClient.Do(request) // don't care even if revoking failed
+		writeSessionData(c, nil)       // to reset, write nil to user's session
+		return c.NoContent(http.StatusOK)
 	}
 
 	return echo.NewHTTPError(http.StatusUnauthorized, "login_required")

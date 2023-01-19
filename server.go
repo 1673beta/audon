@@ -280,7 +280,11 @@ func writeSessionData(c echo.Context, data *SessionData) error {
 		return err
 	}
 
-	sess.Values[SESSION_DATASTORE_NAME] = data
+	if data == nil {
+		sess.Values[SESSION_DATASTORE_NAME] = ""
+	} else {
+		sess.Values[SESSION_DATASTORE_NAME] = data
+	}
 
 	return sess.Save(c.Request(), c.Response())
 }
