@@ -188,3 +188,4 @@ config/*
 # Ignore data directories
 mongo/
 redis/
+cache/
