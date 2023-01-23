@@ -172,7 +172,7 @@ export default {
           this.mutedSpeakerIDs = new Set(Object.keys(this.participants));
           for (const [key, value] of Object.entries(this.participants)) {
             if (value !== null) {
-              this.fetchMastoData(key, value);
+              this.fetchMastoData(key, value, true);
             }
           }
         } catch (error) {
@@ -486,7 +486,7 @@ export default {
     onResize() {
       const mainArea = document.getElementById("mainArea");
       const height = mainArea.clientHeight;
-      this.mainHeight = height > 700 ? 700 : window.innerHeight - 110;
+      this.mainHeight = height > 720 ? 700 : window.innerHeight - 120;
     },
     isHost(identity) {
       return identity === this.roomInfo.host?.audon_id;
@@ -612,7 +612,7 @@ export default {
       }
       return metadata;
     },
-    async fetchMastoData(identity, { remote_id, remote_url }) {
+    async fetchMastoData(identity, { remote_id, remote_url }, preview) {
       if (this.cachedMastoData[identity] !== undefined) return;
       try {
         const url = new URL(remote_url);
@@ -621,8 +621,12 @@ export default {
           disableVersionCheck: true,
         });
         const info = await mastoClient.v1.accounts.fetch(remote_id);
-        const resp = await axios.get(`/api/user/${identity}`);
-        info.avatar = `/storage/${resp.data.audon_id}/avatar/${resp.data.avatar}`;
+        if (preview) {
+          info.avatar = `/storage/${this.participants[identity].audon_id}/avatar/${this.participants[identity].avatar}`;
+        } else {
+          const resp = await axios.get(`/api/user/${identity}`);
+          info.avatar = `/storage/${resp.data.audon_id}/avatar/${resp.data.avatar}`;
+        }
         this.cachedMastoData[identity] = info;
       } catch (error) {
         // FIXME: display error snackbar

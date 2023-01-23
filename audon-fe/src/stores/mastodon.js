@@ -60,7 +60,7 @@ export const useMastodonStore = defineStore("mastodon", {
             avatar: new File([avatarBlob], token.data.audon.avatar),
           });
         }
-      }, 2 * 1000);
+      }, 1500);
       sessionStorage.setItem("avatar_timeout", t.toString());
     },
   },

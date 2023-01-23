@@ -21,8 +21,6 @@ RUN apt-get update && \
     apt-get -y --no-install-recommends install libmagick++-dev libwebp-dev && \
     go build -v -o audon-bin .
 
-RUN
-
 FROM ubuntu:jammy
 
 WORKDIR /audon
@@ -35,7 +33,7 @@ COPY public /audon/public
 RUN echo "Etc/UTC" > /etc/localtime && \
     apt-get update && apt-get upgrade -y && \
     apt-get -y --no-install-recommends install \
-    imagemagick libwebp \
+    imagemagick webp \
     tini \
     tzdata \
     ca-certificates
