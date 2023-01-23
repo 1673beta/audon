@@ -1,0 +1,30 @@
+# main TCP port for RoomService and RTC endpoint
+# for production setups, this port should be placed behind a load balancer with TLS
+port: 7880
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 7882
+  port_range_end: 7882
+
+turn:
+  enabled: false
+
+keys:
+  devkey: secret
+
+webhook:
+  api_key: devkey
+  urls:
+    - http://devcontainer:8100/app/webhook
+
+room:
+  auto_create: false
+  empty_timeout: 30
+  max_participants: 0
+  max_metadata_size: 0
+
+audio:
+  active_level: 50
+  min_percentile: 20
+  update_interval: 200

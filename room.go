@@ -2,12 +2,19 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"net/url"
+	"os"
 	"time"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/jaevor/go-nanoid"
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/labstack/echo/v4"
 	"github.com/livekit/protocol/auth"
 	"github.com/livekit/protocol/livekit"
@@ -262,7 +269,8 @@ func joinRoomHandler(c echo.Context) (err error) {
 		return c.String(http.StatusForbidden, string(room.Restriction))
 	}
 	if !canTalk && (room.IsFollowingOnly() || room.IsFollowerOnly() || room.IsFollowingOrFollowerOnly() || room.IsMutualOnly()) {
-		mastoClient, _ := getMastodonClient(c)
+		data, _ := getSessionData(c)
+		mastoClient := getMastodonClient(data)
 		if mastoClient == nil {
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
@@ -314,9 +322,55 @@ func joinRoomHandler(c echo.Context) (err error) {
 	}
 
 	resp := &TokenResponse{
-		Url:     mainConfig.Livekit.URL.String(),
-		Token:   token,
-		AudonID: user.AudonID,
+		Url:   mainConfig.Livekit.URL.String(),
+		Token: token,
+		Audon: user,
+	}
+	if user.AvatarFile != "" {
+		orig, err := os.ReadFile(user.getAvatarImagePath(user.AvatarFile))
+		if err == nil && orig != nil {
+			resp.Original = fmt.Sprintf("data:%s;base64,%s", mimetype.Detect(orig), base64.StdEncoding.EncodeToString(orig))
+		}
+	}
+
+	avatarLink := c.FormValue("avatar")
+	if avatarLink != "" {
+		avatarURL, err := url.Parse(avatarLink)
+		if err != nil {
+			return ErrInvalidRequestFormat
+		}
+
+		if online, err := user.InLivekit(c.Request().Context()); !online && err == nil {
+			// Download user's avatar
+			req, err := http.NewRequest(http.MethodGet, avatarURL.String(), nil)
+			if err != nil {
+				c.Logger().Error(err)
+				return ErrInvalidRequestFormat
+			}
+			req.Header.Set("User-Agent", USER_AGENT)
+
+			avatarResp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				c.Logger().Error(err)
+				return ErrInvalidRequestFormat
+			}
+			defer avatarResp.Body.Close()
+
+			fnew, err := io.ReadAll(avatarResp.Body)
+			if err != nil {
+				c.Logger().Error(err)
+				return echo.NewHTTPError(http.StatusInternalServerError)
+			}
+
+			indicator, err := user.GetIndicator(c.Request().Context(), fnew)
+			if err != nil {
+				c.Logger().Warn(err)
+			}
+			resp.Indicator = fmt.Sprintf("data:image/gif;base64,%s", base64.StdEncoding.EncodeToString(indicator))
+			resp.Original = fmt.Sprintf("data:%s;base64,%s", mimetype.Detect(fnew), base64.StdEncoding.EncodeToString(fnew))
+		} else if err != nil {
+			c.Logger().Error(err)
+		}
 	}
 
 	// Create room in LiveKit if it doesn't exist
@@ -339,6 +393,10 @@ func joinRoomHandler(c echo.Context) (err error) {
 			return echo.NewHTTPError(http.StatusConflict)
 		}
 	}
+
+	// Store user's session data in cache
+	data, _ := getSessionData(c)
+	roomSessionCache.Set(user.AudonID, data, ttlcache.DefaultTTL)
 
 	return c.JSON(http.StatusOK, resp)
 }
@@ -378,6 +436,23 @@ func closeRoomHandler(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+// Client notifies server that user left room
+func leaveRoomHandler(c echo.Context) error {
+	user := c.Get("user").(*AudonUser)
+	still, err := user.InLivekit(c.Request().Context())
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	} else if still {
+		return c.NoContent(http.StatusAccepted)
+	}
+	if err := user.ClearUserAvatar(c.Request().Context()); err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	return c.NoContent(http.StatusOK)
+}
+
 func updatePermissionHandler(c echo.Context) error {
 	roomID := c.Param("room")
 
@@ -399,11 +474,11 @@ func updatePermissionHandler(c echo.Context) error {
 		return ErrOperationNotPermitted
 	}
 
-	tgtAudonID := c.Param("user")
-	if !lkRoomMetadata.IsUserInLivekitRoom(c.Request().Context(), tgtAudonID) {
+	audonID := c.Param("user")
+	if !lkRoomMetadata.IsUserInLivekitRoom(c.Request().Context(), audonID) {
 		return ErrUserNotFound
 	}
-	tgtUser, err := findUserByID(c.Request().Context(), tgtAudonID)
+	tgtUser, err := findUserByID(c.Request().Context(), audonID)
 	if err != nil {
 		return ErrUserNotFound
 	}
@@ -443,7 +518,7 @@ func updatePermissionHandler(c echo.Context) error {
 
 	info, err := lkRoomServiceClient.UpdateParticipant(c.Request().Context(), &livekit.UpdateParticipantRequest{
 		Room:       roomID,
-		Identity:   tgtAudonID,
+		Identity:   audonID,
 		Permission: newPermission,
 	})
 	if err != nil {

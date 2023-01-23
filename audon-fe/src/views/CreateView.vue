@@ -13,7 +13,6 @@ import { useClipboard } from "@vueuse/core";
 import { useMastodonStore } from "../stores/mastodon";
 import { helpers, maxLength, required } from "@vuelidate/validators";
 import { debounce, some, map, truncate, trim } from "lodash-es";
-import { login } from "masto";
 import { webfinger } from "../assets/utils";
 import axios from "axios";
 
@@ -124,31 +123,26 @@ export default {
     },
     relationship(to) {
       this.advertise = to === "everyone";
-    }
+    },
   },
   methods: {
     async search(val) {
       const finger = val.split("@");
-      if (finger.length < 2) return;
-      else if (finger.length === 3) {
-        finger.splice(0, 1);
-        this.searchQuery = finger.join("@");
-      }
+      if (finger.length !== 2) return;
       try {
-        const url = new URL(`https://${finger[1]}`);
-        const client = await login({
-          url: url.toString(),
-          disableVersionCheck: true,
+        const resp = await this.donStore.client.v1.accounts.search({
+          q: val,
+          resolve: true,
         });
-        const user = await client.accounts.lookup({ acct: finger[0] });
+        if (resp.length != 1) throw "";
+        const user = resp[0];
         user.finger = webfinger(user);
         this.searchResult = user;
+        this.searchError.enabled = false;
       } catch (error) {
-        if (error.isMastoError && error.statusCode === 404) {
-          this.searchError.message = this.$t("errors.notFound", { value: val });
-          this.searchError.colour = "error";
-          this.searchError.enabled = true;
-        }
+        this.searchError.message = this.$t("errors.notFound", { value: val });
+        this.searchError.colour = "error";
+        this.searchError.enabled = true;
       } finally {
         this.isCandiadateLoading = false;
       }
@@ -380,7 +374,9 @@ export default {
               <template v-slot:label>
                 <i18n-t keypath="form.advertise" tag="div">
                   <template v-slot:bot>
-                    <a href="https://akkoma.audon.space/users/now" target="_blank"
+                    <a
+                      href="https://akkoma.audon.space/users/now"
+                      target="_blank"
                       >now@audon.space</a
                     >
                   </template>

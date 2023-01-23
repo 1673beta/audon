@@ -3,7 +3,7 @@ import router from "../router";
 
 export const validators = {
   fqdn: helpers.regex(
-    /^[a-zA-Z]([a-zA-Z0-9\-]+[\.]?)*[a-zA-Z0-9]$/,
+    /^[a-zA-Z]([a-zA-Z0-9-]+[.]?)*[a-zA-Z0-9]$/,
     /^([a-zA-Z0-9]{1}[a-zA-Z0-9-]{0,62})(\.[a-zA-Z0-9]{1}[a-zA-Z0-9-]{0,62})*?(\.[a-zA-Z]{1}[a-zA-Z0-9]{0,62})\.?$/
   ),
 };
@@ -11,7 +11,8 @@ export const validators = {
 export function webfinger(user) {
   if (!user) return "";
   const url = new URL(user.url);
-  return `${user.acct}@${url.host}`;
+  const finger = user.acct.split("@");
+  return `${finger[0]}@${url.host}`;
 }
 
 export function pushNotFound(route) {

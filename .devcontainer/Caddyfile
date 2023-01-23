@@ -2,7 +2,7 @@ audon.localhost {
     tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem
     encode zstd gzip
     @backend {
-            path /app/* /api/*
+            path /app/* /api/* /storage/*
     }
     handle @backend {
             reverse_proxy devcontainer:8100

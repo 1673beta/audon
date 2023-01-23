@@ -17,19 +17,25 @@ RUN go mod download -x
 
 COPY *.go /workspace/
 
-RUN go build -v -o audon-bin .
+RUN apt-get update && \
+    apt-get -y --no-install-recommends install libmagick++-dev libwebp-dev && \
+    go build -v -o audon-bin .
 
-FROM debian:bullseye
+RUN
+
+FROM ubuntu:jammy
 
 WORKDIR /audon
 
 COPY --from=0 /workspace/dist /audon/audon-fe/dist
 COPY --from=1 /workspace/audon-bin /audon/
 COPY locales /audon/locales
+COPY public /audon/public
 
 RUN echo "Etc/UTC" > /etc/localtime && \
     apt-get update && apt-get upgrade -y && \
     apt-get -y --no-install-recommends install \
+    imagemagick libwebp \
     tini \
     tzdata \
     ca-certificates

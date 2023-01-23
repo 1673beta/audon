@@ -189,3 +189,4 @@ config/*
 mongo/
 redis/
 cache/
+public/storage

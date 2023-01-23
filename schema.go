@@ -20,11 +20,12 @@ type (
 	}
 
 	AudonUser struct {
-		AudonID   string    `bson:"audon_id" json:"audon_id" validate:"alphanum"`
-		RemoteID  string    `bson:"remote_id" json:"remote_id" validate:"printascii"`
-		RemoteURL string    `bson:"remote_url" json:"remote_url" validate:"url"`
-		Webfinger string    `bson:"webfinger" json:"webfinger" validate:"email"`
-		CreatedAt time.Time `bson:"created_at" json:"created_at"`
+		AudonID    string    `bson:"audon_id" json:"audon_id" validate:"alphanum"`
+		RemoteID   string    `bson:"remote_id" json:"remote_id" validate:"printascii"`
+		RemoteURL  string    `bson:"remote_url" json:"remote_url" validate:"url"`
+		Webfinger  string    `bson:"webfinger" json:"webfinger" validate:"email"`
+		AvatarFile string    `bson:"avatar" json:"avatar"`
+		CreatedAt  time.Time `bson:"created_at" json:"created_at"`
 	}
 
 	RoomMetadata struct {
@@ -47,9 +48,11 @@ type (
 	}
 
 	TokenResponse struct {
-		Url     string `json:"url"`
-		Token   string `json:"token"`
-		AudonID string `json:"audon_id"`
+		Url       string     `json:"url"`
+		Token     string     `json:"token"`
+		Audon     *AudonUser `json:"audon"`
+		Indicator string     `json:"indicator"`
+		Original  string     `json:"original"`
 	}
 )
 
@@ -67,12 +70,28 @@ const (
 	PRIVATE               JoinRestriction = "private"
 )
 
-func (a *AudonUser) Equal(u *AudonUser) bool {
-	if a == nil {
-		return false
+func (a *AudonUser) GetCurrentLivekitRooms(ctx context.Context) ([]*livekit.Room, error) {
+	resp, err := lkRoomServiceClient.ListRooms(ctx, &livekit.ListRoomsRequest{})
+	if err != nil {
+		return nil, err
 	}
-
-	return a.AudonID == u.AudonID || (a.RemoteID == u.RemoteID && a.RemoteURL == u.RemoteURL)
+	rooms := resp.GetRooms()
+	current := []*livekit.Room{}
+	for _, r := range rooms {
+		partResp, err := lkRoomServiceClient.ListParticipants(ctx, &livekit.ListParticipantsRequest{
+			Room: r.Name,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range partResp.GetParticipants() {
+			if p.Identity == a.AudonID {
+				current = append(current, r)
+				break
+			}
+		}
+	}
+	return current, nil
 }
 
 func (r *Room) IsFollowingOnly() bool {
@@ -169,6 +188,9 @@ func createIndexes(ctx context.Context) error {
 					{Key: "remote_url", Value: 1},
 					{Key: "remote_id", Value: 1},
 				},
+			},
+			{
+				Keys: bson.D{{Key: "webfinger", Value: 1}},
 			},
 		})
 		if err != nil {

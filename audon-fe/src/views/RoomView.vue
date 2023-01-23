@@ -39,15 +39,11 @@ import requestSound from "../assets/request.oga";
 
 const publishOpts = {
   audioBitrate: AudioPresets.music,
-  // forceStereo: true,
 };
 
 const captureOpts = {
-  // autoGainControl: false,
-  // echoCancellation: false,
-  // sampleRate: 48000,
-  // sampleSize: 16,
-  // channelCount: 2
+  autoGainControl: true,
+  echoCancellation: true,
 };
 
 export default {
@@ -64,6 +60,7 @@ export default {
     return {
       webfinger,
       clone,
+      noSleep,
       mdiLogout,
       mdiAccountVoice,
       mdiMicrophone,
@@ -180,6 +177,7 @@ export default {
           }
         } catch (error) {
           let query = { l: `/r/${this.roomID}` };
+          this.noSleep.disable();
           switch (error.response?.status) {
             case 404:
               pushNotFound(this.$route);
@@ -212,7 +210,7 @@ export default {
   },
   computed: {
     iamMuted() {
-      const myAudonID = this.donStore.oauth.audon_id;
+      const myAudonID = this.donStore.oauth.audon?.audon_id;
       return (
         (this.iamHost || this.iamCohost || this.iamSpeaker) &&
         this.micGranted &&
@@ -220,7 +218,7 @@ export default {
       );
     },
     iamHost() {
-      const myAudonID = this.donStore.oauth.audon_id;
+      const myAudonID = this.donStore.oauth.audon?.audon_id;
       if (!myAudonID) return false;
 
       return this.isHost(myAudonID);
@@ -232,7 +230,7 @@ export default {
       return this.isCohost({ remote_id: myInfo.id, remote_url: myInfo.url });
     },
     iamSpeaker() {
-      const myAudonID = this.donStore.oauth.audon_id;
+      const myAudonID = this.donStore.oauth.audon?.audon_id;
       if (!myAudonID) return false;
 
       return this.isSpeaker(myAudonID);
@@ -263,33 +261,44 @@ export default {
     async joinRoom() {
       if (!this.donStore.authorized) return;
       try {
-        const resp = await axios.get(`/api/room/${this.roomID}`);
-        const room = new Room({
-          // adaptiveStream: false,
-          // dynacast: false,
-          // publishDefaults: {
-          //   stopMicTrackOnMute: false,
-          //   simulcast: false,
-          // },
+        const timeout = sessionStorage.getItem("avatar_timeout");
+        if (timeout) {
+          const timeoutID = parseInt(timeout);
+          clearTimeout(timeoutID);
+          sessionStorage.removeItem("avatar_timeout");
+        }
+        await this.donStore.fetchToken();
+        let avatarURL = this.donStore.userinfo.avatar;
+        if (this.donStore.oauth.audon?.avatar) {
+          avatarURL = "";
+        }
+        const resp = await axios.postForm(`/api/room/${this.roomID}`, {
+          avatar: avatarURL,
         });
+        sessionStorage.setItem("avatar_old", resp.data.original);
+        if (resp.data.indicator && !timeout) {
+          try {
+            await this.donStore.updateAvatar(resp.data.indicator);
+          } catch (err) {
+            console.log(err);
+          }
+        }
+        const room = new Room();
         const self = this;
         room
-          .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          .on(RoomEvent.TrackSubscribed, (track) => {
             if (track.kind === Track.Kind.Audio) {
               const element = track.attach();
               self.$refs.audioDOM.appendChild(element);
             }
           })
-          .on(
-            RoomEvent.TrackUnsubscribed,
-            (track, publication, participant) => {
-              track.detach();
-            }
-          )
-          .on(RoomEvent.LocalTrackPublished, (publication, participant) => {
+          .on(RoomEvent.TrackUnsubscribed, (track) => {
+            track.detach();
+          })
+          .on(RoomEvent.LocalTrackPublished, () => {
             self.micGranted = true;
           })
-          .on(RoomEvent.LocalTrackUnpublished, (publication, participant) => {
+          .on(RoomEvent.LocalTrackUnpublished, (publication) => {
             publication.track?.detach();
           })
           .on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
@@ -302,8 +311,6 @@ export default {
               self.fetchMastoData(participant.identity, metadata);
             }
           })
-          .on(RoomEvent.TrackMuted, (publication, participant) => {})
-          .on(RoomEvent.TrackUnmuted, (publication, participant) => {})
           .on(RoomEvent.ParticipantDisconnected, (participant) => {
             self.participants = omit(self.participants, participant.identity);
           })
@@ -314,25 +321,30 @@ export default {
           })
           .on(RoomEvent.Disconnected, (reason) => {
             // TODO: change this from alert to a vuetify thing
-            let message = "";
-            switch (reason) {
-              case DisconnectReason.ROOM_DELETED:
-                message = self.$t("roomEvent.closedByHost");
-                break;
-              case DisconnectReason.PARTICIPANT_REMOVED:
-                message = self.$t("roomEvent.removed");
-                break;
-              case DisconnectReason.CLIENT_INITIATED:
-                break;
-              default:
-                message = "Disconnected due to unknown reasons";
+            self.noSleep.disable();
+            if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
+              alert(self.$t("roomEvent.removed"));
+              self.$router.push({ name: "home" });
+            } else {
+              self.donStore.revertAvatar().finally(() => {
+                let message = "";
+                switch (reason) {
+                  case DisconnectReason.ROOM_DELETED:
+                    message = self.$t("roomEvent.closedByHost");
+                    break;
+                  case DisconnectReason.CLIENT_INITIATED:
+                    break;
+                  default:
+                    message = "Disconnected due to unknown reasons";
+                }
+                if (message !== "") {
+                  alert(message);
+                }
+                self.$router.push({ name: "home" });
+              });
             }
-            if (message !== "") {
-              alert(message);
-            }
-            self.$router.push({ name: "home" });
           })
-          .on(RoomEvent.DataReceived, (payload, participant, kind) => {
+          .on(RoomEvent.DataReceived, (payload, participant) => {
             try {
               /* data should be like
               { "kind": "speak_request" }
@@ -380,7 +392,7 @@ export default {
             if (self.iamSpeaker && !self.micGranted) {
               self.roomClient.localParticipant
                 .setMicrophoneEnabled(true, captureOpts, publishOpts)
-                .then((v) => {
+                .then(() => {
                   self.micGranted = true;
                 })
                 .finally(() => {
@@ -396,7 +408,7 @@ export default {
         for (const part of room.participants.values()) {
           this.addParticipant(part);
         }
-        this.mutedSpeakerIDs.add(this.donStore.oauth.audon_id);
+        this.mutedSpeakerIDs.add(this.donStore.oauth.audon.audon_id);
         this.activeSpeakerIDs = new Set(
           map(room.activeSpeakers, (p) => p.identity)
         );
@@ -420,9 +432,9 @@ export default {
           }
         }
       } catch (error) {
+        let message = "";
         switch (error.response?.status) {
           case 403:
-            let message = "";
             switch (error.response?.data) {
               case "following":
                 message = this.$t("errors.restriction.following");
@@ -456,6 +468,7 @@ export default {
           default:
             alert(error);
         }
+        this.noSleep.disable();
         this.$router.push({ name: "home" });
       }
     },
@@ -472,7 +485,7 @@ export default {
     onResize() {
       const mainArea = document.getElementById("mainArea");
       const height = mainArea.clientHeight;
-      this.mainHeight = height > 700 ? 700 : window.innerHeight - 95;
+      this.mainHeight = height > 700 ? 700 : window.innerHeight - 110;
     },
     isHost(identity) {
       return identity === this.roomInfo.host?.audon_id;
@@ -606,7 +619,9 @@ export default {
           url: url.origin,
           disableVersionCheck: true,
         });
-        const info = await mastoClient.accounts.fetch(remote_id);
+        const info = await mastoClient.v1.accounts.fetch(remote_id);
+        const resp = await axios.get(`/api/user/${identity}`);
+        info.avatar = `/storage/${resp.data.audon_id}/avatar/${resp.data.avatar}`;
         this.cachedMastoData[identity] = info;
       } catch (error) {
         // FIXME: display error snackbar
@@ -651,12 +666,18 @@ export default {
     async onRoomClose() {
       // TODO: change this from confirm to a vuetify thing
       if (confirm(this.$t("closeRoomConfirm"))) {
+        this.loading = true;
         try {
           await axios.delete(`/api/room/${this.roomID}`);
         } catch (error) {
           alert(error);
+        } finally {
+          this.loading = false;
         }
       }
+    },
+    async onLeave() {
+      await this.roomClient.disconnect();
     },
     async onStartListening() {
       try {
@@ -945,6 +966,7 @@ export default {
           v-if="iamHost"
           :icon="mdiLogout"
           color="red"
+          :disabled="loading"
           @click="onRoomClose"
           variant="flat"
         ></v-btn>
@@ -952,7 +974,8 @@ export default {
           v-else
           :icon="mdiLogout"
           color="red"
-          @click="roomClient.disconnect()"
+          :disabled="loading"
+          @click="onLeave"
           variant="flat"
         ></v-btn>
         <v-badge

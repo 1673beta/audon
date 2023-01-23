@@ -2,14 +2,19 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/labstack/echo/v4"
 	"github.com/livekit/protocol/auth"
 	"github.com/livekit/protocol/webhook"
 	mastodon "github.com/mattn/go-mastodon"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"golang.org/x/net/context"
 )
 
 func livekitWebhookHandler(c echo.Context) error {
@@ -32,6 +37,66 @@ func livekitWebhookHandler(c echo.Context) error {
 				return echo.NewHTTPError(http.StatusInternalServerError)
 			}
 		}
+	} else if event.GetEvent() == webhook.EventParticipantLeft {
+		// Revert user's avatar
+		audonID := event.GetParticipant().GetIdentity()
+		user, err := findUserByID(c.Request().Context(), audonID)
+		if user == nil || err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusNotFound)
+		}
+		still, err := user.InLivekit(c.Request().Context())
+		if !still && err == nil {
+			data := roomSessionCache.Get(audonID)
+			if data == nil {
+				return echo.NewHTTPError(http.StatusGone)
+			}
+			roomSessionCache.Delete(audonID)
+			mastoClient := getMastodonClient(data.Value())
+			if mastoClient == nil {
+				c.Logger().Errorf("unable to get mastodon client: %v", data.Value().MastodonConfig)
+				return echo.NewHTTPError(http.StatusInternalServerError)
+			}
+			cached := webhookTimerCache.Get(audonID)
+			if cached != nil {
+				oldTimer := cached.Value()
+				if !oldTimer.Stop() {
+					<-oldTimer.C
+				}
+			}
+			countdown := time.NewTimer(10 * time.Second)
+			webhookTimerCache.Set(audonID, countdown, ttlcache.DefaultTTL)
+
+			<-countdown.C
+			webhookTimerCache.Delete(audonID)
+			// ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			// defer cancel()
+			ctx := context.TODO()
+
+			stillAgain, err := user.InLivekit(ctx)
+			if stillAgain || err != nil {
+				return c.NoContent(http.StatusOK)
+			}
+			user, err = findUserByID(ctx, audonID)
+			if err == nil && user.AvatarFile != "" {
+				log.Printf("restoring avatar: %s\n", audonID)
+				if err != nil {
+					c.Logger().Error(err)
+					return echo.NewHTTPError(http.StatusInternalServerError)
+				}
+				avatar := user.getAvatarImagePath(user.AvatarFile)
+				_, err = updateAvatar(ctx, mastoClient, avatar)
+				if err != nil {
+					c.Logger().Error(err)
+				}
+				user.ClearUserAvatar(ctx)
+				os.Remove(avatar)
+			} else if err != nil {
+				c.Logger().Error(err)
+				return echo.NewHTTPError(http.StatusInternalServerError)
+			}
+		}
+		return c.NoContent(http.StatusOK)
 	} else if event.GetEvent() == webhook.EventRoomStarted {
 		// Have the bot advertise the room
 		room, err := findRoomByID(c.Request().Context(), event.GetRoom().GetName())

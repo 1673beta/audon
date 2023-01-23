@@ -20,10 +20,7 @@ func verifyTokenInSession(c echo.Context) (bool, *mastodon.Account, error) {
 		return false, nil, err
 	}
 
-	mastoClient, err := getMastodonClient(c)
-	if err != nil {
-		return false, nil, err
-	}
+	mastoClient := getMastodonClient(data)
 	if mastoClient == nil {
 		return false, nil, nil
 	}
@@ -72,7 +69,7 @@ func loginHandler(c echo.Context) (err error) {
 		// mastApp, err := mastodon.RegisterApp(c.Request().Context(), appConfig)
 		mastApp, err := registerApp(c.Request().Context(), appConfig)
 		if err != nil {
-			c.Logger().Error(err)
+			c.Logger().Warn(err)
 			return echo.NewHTTPError(http.StatusNotFound, "server_not_found")
 		}
 
@@ -150,11 +147,12 @@ func oauthHandler(c echo.Context) (err error) {
 		}
 		data.AudonID = id.String()
 		acctUrl, _ := url.Parse(acc.URL)
+		finger := strings.Split(acc.Username, "@")
 		newUser := AudonUser{
 			AudonID:   data.AudonID,
 			RemoteID:  string(acc.ID),
 			RemoteURL: acc.URL,
-			Webfinger: fmt.Sprintf("%s@%s", acc.Username, acctUrl.Host),
+			Webfinger: fmt.Sprintf("%s@%s", finger[0], acctUrl.Host),
 			CreatedAt: time.Now().UTC(),
 		}
 		if _, insertErr := coll.InsertOne(c.Request().Context(), newUser); insertErr != nil {
@@ -184,11 +182,15 @@ func getOAuthTokenHandler(c echo.Context) (err error) {
 	if !ok {
 		return ErrInvalidSession
 	}
+	user, ok := c.Get("user").(*AudonUser)
+	if !ok {
+		return ErrInvalidSession
+	}
 
 	return c.JSON(http.StatusOK, &TokenResponse{
-		Url:     data.MastodonConfig.Server,
-		Token:   data.MastodonConfig.AccessToken,
-		AudonID: data.AudonID,
+		Url:   data.MastodonConfig.Server,
+		Token: data.MastodonConfig.AccessToken,
+		Audon: user,
 	})
 }
 

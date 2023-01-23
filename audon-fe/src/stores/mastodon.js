@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import axios from "axios";
 import { login } from "masto";
-import router from "../router";
 import { webfinger } from "../assets/utils";
 
 export const useMastodonStore = defineStore("mastodon", {
@@ -11,7 +10,7 @@ export const useMastodonStore = defineStore("mastodon", {
       oauth: {
         url: "",
         token: "",
-        audon_id: "",
+        audon: null,
       },
       client: null,
       userinfo: null,
@@ -35,19 +34,32 @@ export const useMastodonStore = defineStore("mastodon", {
         disableVersionCheck: true,
       });
       this.client = client;
-      this.userinfo = await client.accounts.verifyCredentials();
+      const user = await client.v1.accounts.verifyCredentials();
+      this.userinfo = user;
       this.authorized = true;
     },
-    async callMastodonAPI(caller, ...args) {
-      try {
-        return await caller(...args);
-      } catch (error) {
-        if (error.response?.status === 401) {
-          this.$reset();
-          router.push({ name: "login" });
+    async updateAvatar(img) {
+      if (this.client === null) return;
+      const avatar = await (await fetch(img)).blob();
+      this.userinfo = await this.client.v1.accounts.updateCredentials({
+        avatar,
+      });
+    },
+    async revertAvatar() {
+      const t = setTimeout(async () => {
+        const oldAvatar = sessionStorage.getItem("avatar_old");
+        sessionStorage.removeItem("avatar_old");
+        sessionStorage.removeItem("avatar_timeout");
+        if (this.client === null || !oldAvatar) return;
+        const resp = await axios.delete("/api/room");
+        if (resp.status === 200) {
+          const avatar = await (await fetch(oldAvatar)).blob();
+          this.userinfo = await this.client.v1.accounts.updateCredentials({
+            avatar,
+          });
         }
-        throw error;
-      }
+      }, 2 * 1000);
+      sessionStorage.setItem("avatar_timeout", t.toString());
     },
   },
 });

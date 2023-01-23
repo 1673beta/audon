@@ -1,11 +1,10 @@
 <script>
-import { RouterView, RouterLink } from "vue-router";
+import { RouterView } from "vue-router";
 import locales from "./locales";
 
 export default {
   components: {
     RouterView,
-    RouterLink,
   },
   setup() {
     return {
@@ -33,13 +32,11 @@ export default {
     </div>
     <v-system-bar window>
       <div class="d-flex justify-center align-center w-100">
-        <RouterLink :to="{ name: 'home' }" class="d-flex align-center">
-          <img
-            height="20"
-            src="./assets/img/audon-logo-orange.svg"
-            alt="Branding Logo"
-          />
-        </RouterLink>
+        <img
+          height="20"
+          src="./assets/img/audon-logo-orange.svg"
+          alt="Branding Logo"
+        />
       </div>
     </v-system-bar>
     <v-main>

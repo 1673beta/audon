@@ -17,8 +17,11 @@ require (
 	github.com/oklog/ulid/v2 v2.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/rbcervilla/redisstore/v9 v9.0.0-rc1
+	github.com/sizeofint/webpanimation v0.0.0-20210809145948-1d2b32119882
 	go.mongodb.org/mongo-driver v1.11.0
-	golang.org/x/text v0.4.0
+	golang.org/x/image v0.3.0
+	golang.org/x/text v0.6.0
+	gopkg.in/gographics/imagick.v2 v2.6.2
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -30,6 +33,7 @@ require (
 	github.com/eapache/channels v1.1.0 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/frostbyte73/go-throttle v0.0.0-20210621200530-8018c891361d // indirect
+	github.com/gabriel-vasile/mimetype v1.4.1 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.2.3 // indirect
@@ -43,6 +47,7 @@ require (
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/jellydator/ttlcache/v3 v3.0.1 // indirect
 	github.com/jxskiss/base62 v1.1.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/labstack/gommon v0.4.0 // indirect

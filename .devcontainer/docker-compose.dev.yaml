@@ -2,7 +2,7 @@ version: '3.1'
 
 services:
   devcontainer:
-    image: "mcr.microsoft.com/devcontainers/universal:2-linux"
+    image: "mcr.microsoft.com/devcontainers/base:jammy"
     volumes:
       - ../..:/workspaces:cached
     command: sleep infinity
@@ -41,11 +41,13 @@ services:
 
   livekit:
     image: livekit/livekit-server:v1.3
-    command: --dev --bind 0.0.0.0
+    command: --config /etc/livekit.yaml
     restart: unless-stopped
     ports:
       - "7881:7881"
       - "7882:7882/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
 
   caddy:
     image: caddy:2

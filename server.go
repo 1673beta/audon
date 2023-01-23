@@ -18,6 +18,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/go-redis/redis/v9"
 	"github.com/gorilla/sessions"
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	lksdk "github.com/livekit/server-sdk-go"
@@ -52,6 +53,8 @@ var (
 	mainConfig          *AppConfig
 	lkRoomServiceClient *lksdk.RoomServiceClient
 	localeBundle        *i18n.Bundle
+	roomSessionCache    *ttlcache.Cache[string, *SessionData]
+	webhookTimerCache   *ttlcache.Cache[string, *time.Timer]
 )
 
 func init() {
@@ -150,6 +153,12 @@ func main() {
 	redisStore.Options(sessionOptions)
 	e.Use(session.Middleware(redisStore))
 
+	// Setup caches
+	roomSessionCache = ttlcache.New(ttlcache.WithTTL[string, *SessionData](24 * time.Hour))
+	webhookTimerCache = ttlcache.New(ttlcache.WithTTL[string, *time.Timer](60 * time.Second))
+	go roomSessionCache.Start()
+	go webhookTimerCache.Start()
+
 	e.POST("/app/login", loginHandler)
 	e.GET("/app/oauth", oauthHandler)
 	e.GET("/app/verify", verifyHandler)
@@ -160,14 +169,17 @@ func main() {
 
 	api := e.Group("/api", authMiddleware)
 	api.GET("/token", getOAuthTokenHandler)
+	api.GET("/user/:id", getUserHandler)
 	api.POST("/room", createRoomHandler)
-	api.GET("/room/:id", joinRoomHandler)
+	api.DELETE("/room", leaveRoomHandler)
+	api.POST("/room/:id", joinRoomHandler)
 	api.PATCH("/room/:id", updateRoomHandler)
 	api.DELETE("/room/:id", closeRoomHandler)
 	api.PUT("/room/:room/:user", updatePermissionHandler)
 
 	e.Static("/assets", "audon-fe/dist/assets")
 	e.Static("/static", "audon-fe/dist/static")
+	e.Static("/storage", mainConfig.StorageDir)
 	e.GET("/r/:id", renderRoomHandler)
 	e.GET("/*", func(c echo.Context) error {
 		return c.Render(http.StatusOK, "tmpl", &TemplateData{Config: &mainConfig.AppConfigBase})
@@ -189,6 +201,8 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	e.Logger.Print("Attempting graceful shutdown")
 	defer shutdownCancel()
+	roomSessionCache.DeleteAll()
+	webhookTimerCache.DeleteAll()
 	if err := e.Shutdown(shutdownCtx); err != nil {
 		e.Logger.Fatalf("Failed shutting down gracefully: %s\n", err.Error())
 	}
@@ -206,16 +220,6 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 }
 
 func getAppConfig(server string, redirPath string) (*mastodon.AppConfig, error) {
-	// if mastAppConfigBase != nil {
-	// 	return &mastodon.AppConfig{
-	// 		Server:       server,
-	// 		ClientName:   mastAppConfigBase.ClientName,
-	// 		Scopes:       mastAppConfigBase.Scopes,
-	// 		Website:      mastAppConfigBase.Website,
-	// 		RedirectURIs: mastAppConfigBase.RedirectURIs,
-	// 	}, nil
-	// }
-
 	if redirPath == "" {
 		redirPath = "/"
 	}
@@ -233,7 +237,7 @@ func getAppConfig(server string, redirPath string) (*mastodon.AppConfig, error) 
 
 	conf := &mastodon.AppConfig{
 		ClientName:   "Audon",
-		Scopes:       "read:accounts read:follows",
+		Scopes:       "read:accounts read:follows write:accounts",
 		Website:      "https://codeberg.org/nmkj/audon",
 		RedirectURIs: redirectURI,
 	}

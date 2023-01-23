@@ -1,8 +1,11 @@
 package main
 
 import (
+	"image"
+	"image/png"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"github.com/joho/godotenv"
 )
@@ -18,8 +21,11 @@ type (
 	}
 
 	AppConfigBase struct {
-		LocalDomain string `validate:"required,hostname|hostname_port"`
-		Environment string `validate:"printascii"`
+		LocalDomain    string `validate:"required,hostname|hostname_port"`
+		Environment    string `validate:"printascii"`
+		StorageDir     string
+		LogoImageBack  image.Image
+		LogoImageFront image.Image
 	}
 
 	LivekitConfig struct {
@@ -78,9 +84,39 @@ func loadConfig(envname string) (*AppConfig, error) {
 	var appConf AppConfig
 
 	// Setup base config
+	storageDir, err := filepath.Abs("public/storage")
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(storageDir, 0775); err != nil {
+		return nil, err
+	}
+	publicDir, _ := filepath.Abs("public")
+	logoBack, err := os.Open(filepath.Join(publicDir, "logo_back.png"))
+	if err != nil {
+		return nil, err
+	}
+	defer logoBack.Close()
+	logoBackPng, err := png.Decode(logoBack)
+	if err != nil {
+		return nil, err
+	}
+	logoFront, err := os.Open(filepath.Join(publicDir, "logo_front.png"))
+	if err != nil {
+		return nil, err
+	}
+	defer logoFront.Close()
+	logoFrontPng, err := png.Decode(logoFront)
+	if err != nil {
+		return nil, err
+	}
+
 	basicConf := AppConfigBase{
-		LocalDomain: os.Getenv("LOCAL_DOMAIN"),
-		Environment: envname,
+		LocalDomain:    os.Getenv("LOCAL_DOMAIN"),
+		Environment:    envname,
+		StorageDir:     storageDir,
+		LogoImageBack:  logoBackPng,
+		LogoImageFront: logoFrontPng,
 	}
 	if err := mainValidator.Struct(&basicConf); err != nil {
 		return nil, err
