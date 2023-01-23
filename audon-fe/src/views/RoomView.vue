@@ -28,7 +28,7 @@ import {
   DataPacket_Kind,
   AudioPresets,
 } from "livekit-client";
-import { login } from "masto";
+import { createClient } from "masto";
 import { useVuelidate } from "@vuelidate/core";
 import { helpers, maxLength, required } from "@vuelidate/validators";
 import NoSleep from "@uriopass/nosleep.js";
@@ -267,7 +267,8 @@ export default {
           clearTimeout(timeoutID);
           sessionStorage.removeItem("avatar_timeout");
         }
-        await this.donStore.fetchToken();
+        const token = await axios.get("/api/token");
+        this.donStore.oauth = token.data;
         let avatarURL = this.donStore.userinfo.avatar;
         if (this.donStore.oauth.audon?.avatar) {
           avatarURL = "";
@@ -275,7 +276,7 @@ export default {
         const resp = await axios.postForm(`/api/room/${this.roomID}`, {
           avatar: avatarURL,
         });
-        sessionStorage.setItem("avatar_old", resp.data.original);
+        sessionStorage.setItem("avatar_old_data", resp.data.original);
         if (resp.data.indicator && !timeout) {
           try {
             await this.donStore.updateAvatar(resp.data.indicator);
@@ -615,7 +616,7 @@ export default {
       if (this.cachedMastoData[identity] !== undefined) return;
       try {
         const url = new URL(remote_url);
-        const mastoClient = await login({
+        const mastoClient = createClient({
           url: url.origin,
           disableVersionCheck: true,
         });

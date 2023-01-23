@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import axios from "axios";
-import { login } from "masto";
+import { createClient } from "masto";
 import { webfinger } from "../assets/utils";
 
 export const useMastodonStore = defineStore("mastodon", {
@@ -28,7 +28,7 @@ export const useMastodonStore = defineStore("mastodon", {
     async fetchToken() {
       const resp = await axios.get("/api/token");
       this.oauth = resp.data;
-      const client = await login({
+      const client = createClient({
         url: this.oauth.url,
         accessToken: this.oauth.token,
         disableVersionCheck: true,
@@ -40,22 +40,24 @@ export const useMastodonStore = defineStore("mastodon", {
     },
     async updateAvatar(img) {
       if (this.client === null) return;
-      const avatar = await (await fetch(img)).blob();
+      const avatarBlob = await (await fetch(img)).blob();
       this.userinfo = await this.client.v1.accounts.updateCredentials({
-        avatar,
+        avatar: new File([avatarBlob], `${Date.now()}.gif`),
       });
     },
     async revertAvatar() {
       const t = setTimeout(async () => {
-        const oldAvatar = sessionStorage.getItem("avatar_old");
-        sessionStorage.removeItem("avatar_old");
+        const token = await axios.get("/api/token");
+        const oldAvatar = sessionStorage.getItem("avatar_old_data");
+        sessionStorage.removeItem("avatar_old_data");
         sessionStorage.removeItem("avatar_timeout");
-        if (this.client === null || !oldAvatar) return;
+        if (this.client === null || !oldAvatar || !token.data.audon.avatar)
+          return;
         const resp = await axios.delete("/api/room");
         if (resp.status === 200) {
-          const avatar = await (await fetch(oldAvatar)).blob();
+          const avatarBlob = await (await fetch(oldAvatar)).blob();
           this.userinfo = await this.client.v1.accounts.updateCredentials({
-            avatar,
+            avatar: new File([avatarBlob], token.data.audon.avatar),
           });
         }
       }, 2 * 1000);

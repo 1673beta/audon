@@ -69,9 +69,9 @@ func livekitWebhookHandler(c echo.Context) error {
 
 			<-countdown.C
 			webhookTimerCache.Delete(audonID)
-			// ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			// defer cancel()
-			ctx := context.TODO()
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			// ctx := context.TODO()
 
 			stillAgain, err := user.InLivekit(ctx)
 			if stillAgain || err != nil {
@@ -87,7 +87,7 @@ func livekitWebhookHandler(c echo.Context) error {
 				avatar := user.getAvatarImagePath(user.AvatarFile)
 				_, err = updateAvatar(ctx, mastoClient, avatar)
 				if err != nil {
-					c.Logger().Error(err)
+					c.Logger().Warn(err)
 				}
 				user.ClearUserAvatar(ctx)
 				os.Remove(avatar)
