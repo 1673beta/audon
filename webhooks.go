@@ -126,7 +126,7 @@ func livekitWebhookHandler(c echo.Context) error {
 
 			messages := []string{
 				header,
-				fmt.Sprintf(":audon: %s\n🎙️ https://%s/r/%s", room.Title, mainConfig.LocalDomain, room.RoomID),
+				fmt.Sprintf(":udon: %s\n🎙️ https://%s/r/%s", room.Title, mainConfig.LocalDomain, room.RoomID),
 			}
 			if room.Description != "" {
 				messages = append(messages, room.Description)
