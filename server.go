@@ -164,12 +164,12 @@ func main() {
 	e.GET("/app/verify", verifyHandler)
 	e.POST("/app/logout", logoutHandler)
 	e.GET("/app/preview/:id", previewRoomHandler)
+	e.GET("/app/user/:id", getUserHandler)
 
 	e.POST("/app/webhook", livekitWebhookHandler)
 
 	api := e.Group("/api", authMiddleware)
 	api.GET("/token", getOAuthTokenHandler)
-	api.GET("/user/:id", getUserHandler)
 	api.POST("/room", createRoomHandler)
 	api.DELETE("/room", leaveRoomHandler)
 	api.POST("/room/:id", joinRoomHandler)

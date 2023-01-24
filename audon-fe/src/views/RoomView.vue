@@ -172,7 +172,7 @@ export default {
           this.mutedSpeakerIDs = new Set(Object.keys(this.participants));
           for (const [key, value] of Object.entries(this.participants)) {
             if (value !== null) {
-              this.fetchMastoData(key, value, true);
+              this.fetchMastoData(key, value);
             }
           }
         } catch (error) {
@@ -612,7 +612,7 @@ export default {
       }
       return metadata;
     },
-    async fetchMastoData(identity, { remote_id, remote_url }, preview) {
+    async fetchMastoData(identity, { remote_id, remote_url }) {
       if (this.cachedMastoData[identity] !== undefined) return;
       try {
         const url = new URL(remote_url);
@@ -621,12 +621,8 @@ export default {
           disableVersionCheck: true,
         });
         const info = await mastoClient.v1.accounts.fetch(remote_id);
-        if (preview) {
-          info.avatar = `/storage/${this.participants[identity].audon_id}/avatar/${this.participants[identity].avatar}`;
-        } else {
-          const resp = await axios.get(`/api/user/${identity}`);
-          info.avatar = `/storage/${resp.data.audon_id}/avatar/${resp.data.avatar}`;
-        }
+        const resp = await axios.get(`/app/user/${identity}`);
+        info.avatar = `/storage/${resp.data.audon_id}/avatar/${resp.data.avatar}`;
         this.cachedMastoData[identity] = info;
       } catch (error) {
         // FIXME: display error snackbar
