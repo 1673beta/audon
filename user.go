@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"net/http"
-	"os"
 
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
@@ -41,7 +40,7 @@ func (a *AudonUser) InLivekit(ctx context.Context) (bool, error) {
 }
 
 func (a *AudonUser) ClearUserAvatar(ctx context.Context) error {
-	os.Remove(a.getAvatarImagePath(a.AvatarFile))
+	// os.Remove(a.getAvatarImagePath(a.AvatarFile))
 	coll := mainDB.Collection(COLLECTION_USER)
 	_, err := coll.UpdateOne(ctx,
 		bson.D{{Key: "audon_id", Value: a.AudonID}},

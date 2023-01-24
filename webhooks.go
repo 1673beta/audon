@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -69,7 +68,7 @@ func livekitWebhookHandler(c echo.Context) error {
 
 			<-countdown.C
 			webhookTimerCache.Delete(audonID)
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 			// ctx := context.TODO()
 
@@ -90,7 +89,7 @@ func livekitWebhookHandler(c echo.Context) error {
 					c.Logger().Warn(err)
 				}
 				user.ClearUserAvatar(ctx)
-				os.Remove(avatar)
+				// os.Remove(avatar)
 			} else if err != nil {
 				c.Logger().Error(err)
 				return echo.NewHTTPError(http.StatusInternalServerError)

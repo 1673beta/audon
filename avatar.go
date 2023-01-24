@@ -48,7 +48,7 @@ func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte) ([]byte, erro
 			return nil, err
 		}
 		if u.AvatarFile != "" {
-			os.Remove(u.getAvatarImagePath(u.AvatarFile))
+			// os.Remove(u.getAvatarImagePath(u.AvatarFile))
 		}
 		isAvatarNew = true
 	}
