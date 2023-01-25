@@ -21,11 +21,12 @@ type (
 	}
 
 	AppConfigBase struct {
-		LocalDomain    string `validate:"required,hostname|hostname_port"`
-		Environment    string `validate:"printascii"`
-		StorageDir     string
-		LogoImageBack  image.Image
-		LogoImageFront image.Image
+		LocalDomain        string `validate:"required,hostname|hostname_port"`
+		Environment        string `validate:"printascii"`
+		StorageDir         string
+		LogoImageBlueBack  image.Image
+		LogoImageWhiteBack image.Image
+		LogoImageFront     image.Image
 	}
 
 	LivekitConfig struct {
@@ -92,12 +93,21 @@ func loadConfig(envname string) (*AppConfig, error) {
 		return nil, err
 	}
 	publicDir, _ := filepath.Abs("public")
-	logoBack, err := os.Open(filepath.Join(publicDir, "logo_back.png"))
+	logoBlueBack, err := os.Open(filepath.Join(publicDir, "logo_back_blue.png"))
 	if err != nil {
 		return nil, err
 	}
-	defer logoBack.Close()
-	logoBackPng, err := png.Decode(logoBack)
+	defer logoBlueBack.Close()
+	logoBlueBackPng, err := png.Decode(logoBlueBack)
+	if err != nil {
+		return nil, err
+	}
+	logoWhiteBack, err := os.Open(filepath.Join(publicDir, "logo_back_white.png"))
+	if err != nil {
+		return nil, err
+	}
+	defer logoWhiteBack.Close()
+	logoWhiteBackPng, err := png.Decode(logoWhiteBack)
 	if err != nil {
 		return nil, err
 	}
@@ -112,11 +122,12 @@ func loadConfig(envname string) (*AppConfig, error) {
 	}
 
 	basicConf := AppConfigBase{
-		LocalDomain:    os.Getenv("LOCAL_DOMAIN"),
-		Environment:    envname,
-		StorageDir:     storageDir,
-		LogoImageBack:  logoBackPng,
-		LogoImageFront: logoFrontPng,
+		LocalDomain:        os.Getenv("LOCAL_DOMAIN"),
+		Environment:        envname,
+		StorageDir:         storageDir,
+		LogoImageBlueBack:  logoBlueBackPng,
+		LogoImageWhiteBack: logoWhiteBackPng,
+		LogoImageFront:     logoFrontPng,
 	}
 	if err := mainValidator.Struct(&basicConf); err != nil {
 		return nil, err

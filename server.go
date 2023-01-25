@@ -170,7 +170,7 @@ func main() {
 
 	api := e.Group("/api", authMiddleware)
 	api.GET("/token", getUserTokenHandler)
-	// api.GET("/room", getStatusHandler)
+	api.GET("/room", getStatusHandler)
 	api.POST("/room", createRoomHandler)
 	api.DELETE("/room", leaveRoomHandler)
 	api.POST("/room/:id", joinRoomHandler)

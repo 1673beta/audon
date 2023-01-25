@@ -326,66 +326,63 @@ func joinRoomHandler(c echo.Context) (err error) {
 
 	roomMetadata.MastodonAccounts[user.AudonID] = mastoAccount
 
-	// Get ready to change avatar if user is host or cohost
-	if room.IsHost(user) || room.IsCoHost(user) {
-		// Get user's stored avatar if exists
-		if user.AvatarFile != "" {
-			orig, err := os.ReadFile(user.getAvatarImagePath(user.AvatarFile))
-			if err == nil && orig != nil {
-				resp.Original = fmt.Sprintf("data:%s;base64,%s", mimetype.Detect(orig), base64.StdEncoding.EncodeToString(orig))
-			} else if orig == nil {
-				user.AvatarFile = ""
-			}
-			// icon, err := os.ReadFile(user.GetGIFAvatarPath())
-			// if err == nil && icon != nil {
-			// 	resp.Indicator = fmt.Sprintf("data:image/gif;base64,%s", base64.StdEncoding.EncodeToString(icon))
-			// }
+	// Get user's stored avatar if exists
+	if user.AvatarFile != "" {
+		orig, err := os.ReadFile(user.getAvatarImagePath(user.AvatarFile))
+		if err == nil && orig != nil {
+			resp.Original = fmt.Sprintf("data:%s;base64,%s", mimetype.Detect(orig), base64.StdEncoding.EncodeToString(orig))
+		} else if orig == nil {
+			user.AvatarFile = ""
 		}
-		avatarLink := mastoAccount.Avatar
-		if err := mainValidator.Var(&avatarLink, "required"); err != nil {
-			return wrapValidationError(err)
-		}
-		avatarURL, err := url.Parse(avatarLink)
+		// icon, err := os.ReadFile(user.GetGIFAvatarPath())
+		// if err == nil && icon != nil {
+		// 	resp.Indicator = fmt.Sprintf("data:image/gif;base64,%s", base64.StdEncoding.EncodeToString(icon))
+		// }
+	}
+	avatarLink := mastoAccount.Avatar
+	if err := mainValidator.Var(&avatarLink, "required"); err != nil {
+		return wrapValidationError(err)
+	}
+	avatarURL, err := url.Parse(avatarLink)
+	if err != nil {
+		c.Logger().Error(err)
+		return ErrInvalidRequestFormat
+	}
+
+	// Retrieve user's current avatar if the old one doesn't exist in Audon.
+	// Skips if user is still in another room.
+	if already, err := user.InLivekit(c.Request().Context()); !already && err == nil && user.AvatarFile == "" {
+		// Download user's avatar
+		req, err := http.NewRequest(http.MethodGet, avatarURL.String(), nil)
 		if err != nil {
 			c.Logger().Error(err)
 			return ErrInvalidRequestFormat
 		}
+		req.Header.Set("User-Agent", USER_AGENT)
 
-		// Retrieve user's current avatar if the old one doesn't exist in Audon.
-		// Skips if user is still in another room.
-		if already, err := user.InLivekit(c.Request().Context()); !already && err == nil && user.AvatarFile == "" {
-			// Download user's avatar
-			req, err := http.NewRequest(http.MethodGet, avatarURL.String(), nil)
-			if err != nil {
-				c.Logger().Error(err)
-				return ErrInvalidRequestFormat
-			}
-			req.Header.Set("User-Agent", USER_AGENT)
-
-			avatarResp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				c.Logger().Error(err)
-				return ErrInvalidRequestFormat
-			}
-			defer avatarResp.Body.Close()
-
-			fnew, err := io.ReadAll(avatarResp.Body)
-			if err != nil {
-				c.Logger().Error(err)
-				return echo.NewHTTPError(http.StatusInternalServerError)
-			}
-
-			// Generate indicator GIF
-			indicator, err := user.GetIndicator(c.Request().Context(), fnew)
-			if err != nil {
-				c.Logger().Error(err)
-				return echo.NewHTTPError(http.StatusInternalServerError)
-			}
-			resp.Original = fmt.Sprintf("data:%s;base64,%s", mimetype.Detect(fnew), base64.StdEncoding.EncodeToString(fnew))
-			resp.Indicator = fmt.Sprintf("data:image/gif;base64,%s", base64.StdEncoding.EncodeToString(indicator))
-		} else if err != nil {
+		avatarResp, err := http.DefaultClient.Do(req)
+		if err != nil {
 			c.Logger().Error(err)
+			return ErrInvalidRequestFormat
 		}
+		defer avatarResp.Body.Close()
+
+		fnew, err := io.ReadAll(avatarResp.Body)
+		if err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+
+		// Generate indicator GIF
+		indicator, err := user.GetIndicator(c.Request().Context(), fnew, room)
+		if err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+		resp.Original = fmt.Sprintf("data:%s;base64,%s", mimetype.Detect(fnew), base64.StdEncoding.EncodeToString(fnew))
+		resp.Indicator = fmt.Sprintf("data:image/gif;base64,%s", base64.StdEncoding.EncodeToString(indicator))
+	} else if err != nil {
+		c.Logger().Error(err)
 	}
 
 	// Create room in LiveKit if it doesn't exist

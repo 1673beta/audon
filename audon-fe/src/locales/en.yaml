@@ -64,7 +64,7 @@ startListening: "Start Listening"
 browserMuted: "To protect your ears, sound is muted by the browser. Press @:startListening to continue."
 onlineIndicator:
   message: "Do you want to add the online indicator to your account's avatar like this?"
-  hint: "Audon will remove the indicator after this room is closed."
+  hint: "Audon will remove the indicator after you leave."
   warning: "Your instance may take a while to reflect the indicator."
   sure: "Yes"
   nope: "No"

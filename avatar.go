@@ -22,7 +22,7 @@ import (
 	"gopkg.in/gographics/imagick.v2/imagick"
 )
 
-func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte) ([]byte, error) {
+func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte, room *Room) ([]byte, error) {
 	if u == nil {
 		return nil, errors.New("nil user")
 	}
@@ -73,17 +73,21 @@ func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	return u.createGIF(newImg)
+	return u.createGIF(newImg, room.IsHost(u) || room.IsCoHost(u))
 }
 
-func (u *AudonUser) createGIF(avatar image.Image) ([]byte, error) {
+func (u *AudonUser) createGIF(avatar image.Image, blue bool) ([]byte, error) {
 	avatarPNG := image.NewRGBA(image.Rect(0, 0, 150, 150))
 	draw.BiLinear.Scale(avatarPNG, avatarPNG.Rect, avatar, avatar.Bounds(), draw.Src, nil)
 
 	baseFrame := image.NewRGBA(avatarPNG.Bounds())
 	draw.Draw(baseFrame, baseFrame.Bounds(), image.Black, image.Point{}, draw.Src)
 	draw.Copy(baseFrame, image.Point{}, avatarPNG, avatarPNG.Bounds(), draw.Over, nil)
-	draw.Draw(baseFrame, baseFrame.Bounds(), mainConfig.LogoImageBack, image.Point{-55, -105}, draw.Over)
+	logoImageBack := mainConfig.LogoImageWhiteBack
+	if blue {
+		logoImageBack = mainConfig.LogoImageBlueBack
+	}
+	draw.Draw(baseFrame, baseFrame.Bounds(), logoImageBack, image.Point{-55, -105}, draw.Over)
 
 	anim := webpanimation.NewWebpAnimation(150, 150, 0)
 	defer anim.ReleaseMemory()
