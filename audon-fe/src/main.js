@@ -53,6 +53,7 @@ axios.interceptors.response.use(undefined, (error) => {
   return Promise.reject(error);
 });
 router.beforeEach(async (to) => {
+  document.title = to.meta.title ?? "Audon";
   const donStore = useMastodonStore();
   if ((!to.meta.noauth || to.name === "login") && !donStore.authorized) {
     try {

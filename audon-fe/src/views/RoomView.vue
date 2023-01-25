@@ -203,6 +203,11 @@ export default {
     setInterval(this.refreshRemoteMuteStatus, 100);
     setInterval(this.refreshTimeElapsed, 1000);
   },
+  watch: {
+    "roomInfo.title"(newValue) {
+      document.title = `Audon: ${newValue}`;
+    },
+  },
   computed: {
     iamMuted() {
       const myAudonID = this.donStore.oauth.audon?.audon_id;
