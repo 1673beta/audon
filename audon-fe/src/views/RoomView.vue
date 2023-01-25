@@ -845,6 +845,7 @@ export default {
           <template v-for="(value, key) of participants" :key="key">
             <Participant
               v-if="isHost(key)"
+              :preview="preview"
               :talking="isTalking(key)"
               type="host"
               :data="cachedMastoData[key]"
@@ -853,6 +854,7 @@ export default {
             ></Participant>
             <Participant
               v-if="isCohost(value)"
+              :preview="preview"
               :talking="isTalking(key)"
               type="cohost"
               :data="cachedMastoData[key]"
@@ -861,6 +863,7 @@ export default {
             ></Participant>
             <Participant
               v-if="isSpeaker(key)"
+              :preview="preview"
               :talking="isTalking(key)"
               type="speaker"
               :data="cachedMastoData[key]"

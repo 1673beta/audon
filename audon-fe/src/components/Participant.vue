@@ -17,6 +17,7 @@ export default {
     data: Object,
     muted: Boolean,
     emoji: String,
+    preview: Boolean,
   },
   computed: {
     showEmoji() {
@@ -100,7 +101,7 @@ export default {
     </v-avatar>
     <h4 :class="canSpeak ? 'mt-1' : 'mt-2'">
       <v-icon
-        v-if="canSpeak"
+        v-if="canSpeak && !preview"
         :icon="muted ? mdiMicrophoneOff : mdiMicrophone"
       ></v-icon>
       <a :href="data?.url" class="plain" target="_blank">{{
