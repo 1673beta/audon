@@ -21,7 +21,7 @@ type (
 	}
 
 	AppConfigBase struct {
-		LocalDomain        string `validate:"required,hostname|hostname_port"`
+		LocalDomain        string `validate:"required,fqdn"`
 		Environment        string `validate:"printascii"`
 		StorageDir         string
 		LogoImageBlueBack  image.Image

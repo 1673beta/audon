@@ -36,7 +36,7 @@ func verifyTokenInSession(c echo.Context) (bool, *mastodon.Account, error) {
 }
 
 type LoginRequest struct {
-	ServerHost string `validate:"required,hostname,fqdn" form:"server"`
+	ServerHost string `validate:"required,fqdn" form:"server"`
 	Redirect   string `validate:"url_encoded" form:"redir"`
 }
 
