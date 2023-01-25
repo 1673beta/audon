@@ -33,7 +33,6 @@ func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte) ([]byte, erro
 	}
 
 	hash := sha256.Sum256(fnew)
-	isAvatarNew := false
 
 	var err error
 
@@ -47,7 +46,6 @@ func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte) ([]byte, erro
 		if err := os.WriteFile(saved, fnew, 0664); err != nil {
 			return nil, err
 		}
-		isAvatarNew = true
 	}
 
 	fname := filepath.Base(saved)
@@ -60,13 +58,7 @@ func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte) ([]byte, erro
 		return nil, err
 	}
 
-	if !isAvatarNew {
-		if data, err := os.ReadFile(u.GetOriginalAvatarPath(hash, mtype)); err == nil {
-			return data, nil
-		}
-	}
-
-	buf := bytes.NewBuffer(fnew)
+	buf := bytes.NewReader(fnew)
 
 	var newImg image.Image
 	if mtype.Is("image/png") {

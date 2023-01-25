@@ -300,6 +300,14 @@ export default {
         .on(RoomEvent.Disconnected, async (reason) => {
           // TODO: change this from alert to a vuetify thing
           self.noSleep.disable();
+          self.closeLoading = true;
+          try {
+            await self.donStore.revertAvatar();
+          } catch (error) {
+            console.log(error);
+          } finally {
+            self.closeLoading = false;
+          }
           if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
             alert(self.$t("roomEvent.removed"));
             self.$router.push({ name: "home" });
@@ -307,32 +315,12 @@ export default {
             let message = "";
             switch (reason) {
               case DisconnectReason.ROOM_DELETED:
-                if (self.iamHost || self.iamCohost) {
-                  self.closeLoading = true;
-                  try {
-                    await self.donStore.revertAvatar();
-                  } catch (error) {
-                    console.log(error);
-                  } finally {
-                    self.closeLoading = false;
-                  }
-                }
                 message = self.$t("roomEvent.closedByHost");
                 break;
               case DisconnectReason.CLIENT_INITIATED:
-                if (self.iamCohost) {
-                  self.closeLoading = true;
-                  try {
-                    await self.donStore.revertAvatar();
-                  } catch (error) {
-                    console.log(error);
-                  } finally {
-                    self.closeLoading = false;
-                  }
-                }
                 break;
               default:
-                message = "Disconnected due to unknown reasons";
+                message = self.$t("roomEvent.disconnected");
             }
             if (message !== "") {
               alert(message);
@@ -625,13 +613,11 @@ export default {
     async onRoomClose() {
       // TODO: change this from confirm to a vuetify thing
       if (confirm(this.$t("closeRoomConfirm"))) {
-        this.loading = true;
+        this.closeLoading = true;
         try {
           await axios.delete(`/api/room/${this.roomID}`);
         } catch (error) {
           alert(error);
-        } finally {
-          this.loading = false;
         }
       }
     },

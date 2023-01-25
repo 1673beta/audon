@@ -98,7 +98,6 @@ func livekitWebhookHandler(c echo.Context) error {
 				}
 			}()
 		}
-		return c.NoContent(http.StatusOK)
 	} else if event.GetEvent() == webhook.EventRoomStarted {
 		// Have the bot advertise the room
 		room, err := findRoomByID(c.Request().Context(), event.GetRoom().GetName())

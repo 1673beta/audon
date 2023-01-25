@@ -79,3 +79,4 @@ closeRoomConfirm: "Are you sure you want to close this room?"
 roomEvent:
   closedByHost: "Host has closed this room."
   removed: "You have been requested to leave."
+  disconnected: "Disconnected from this room."

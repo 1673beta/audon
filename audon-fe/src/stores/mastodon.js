@@ -48,10 +48,12 @@ export const useMastodonStore = defineStore("mastodon", {
     },
     async revertAvatar() {
       const token = await axios.get("/api/token");
-      if (this.avatar && token.data.audon.avatar) {
-        await this.updateAvatar(this.avatar, token.data.audon.avatar);
-      };
-      await axios.delete("/api/room");
+      if (token.data.audon.avatar) {
+        if (this.avatar) {
+          await this.updateAvatar(this.avatar, token.data.audon.avatar);
+        }
+        await axios.delete("/api/room");
+      }
     },
   },
 });

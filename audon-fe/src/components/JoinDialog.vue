@@ -88,10 +88,10 @@ export default {
   methods: {
     async joining(indicator) {
       try {
+        this.donStore.avatar = this.roomToken.original;
         await this.roomClient.startAudio();
         if (indicator && this.uploadEnabled) {
           this.uploading = true;
-          this.donStore.avatar = this.roomToken.original;
           try {
             await this.donStore.updateAvatar(this.roomToken.indicator);
           } finally {

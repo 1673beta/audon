@@ -78,4 +78,5 @@ microphoneBlocked: "マイクが禁止されています。ブラウザやデバ
 closeRoomConfirm: "この部屋を閉じますか？"
 roomEvent:
   closedByHost: "ホストにより部屋が閉じられました。"
-  removed: "部屋から退去しました。"
+  removed: "リクエストにより部屋から退去しました。"
+  disconneced: "切断されました。"
