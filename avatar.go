@@ -47,9 +47,6 @@ func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte) ([]byte, erro
 		if err := os.WriteFile(saved, fnew, 0664); err != nil {
 			return nil, err
 		}
-		if u.AvatarFile != "" {
-			// os.Remove(u.getAvatarImagePath(u.AvatarFile))
-		}
 		isAvatarNew = true
 	}
 
@@ -94,7 +91,7 @@ func (u *AudonUser) createGIF(avatar image.Image) ([]byte, error) {
 	baseFrame := image.NewRGBA(avatarPNG.Bounds())
 	draw.Draw(baseFrame, baseFrame.Bounds(), image.Black, image.Point{}, draw.Src)
 	draw.Copy(baseFrame, image.Point{}, avatarPNG, avatarPNG.Bounds(), draw.Over, nil)
-	draw.Draw(baseFrame, baseFrame.Bounds(), mainConfig.LogoImageBack, image.Point{-35, -35}, draw.Over)
+	draw.Draw(baseFrame, baseFrame.Bounds(), mainConfig.LogoImageBack, image.Point{-55, -105}, draw.Over)
 
 	anim := webpanimation.NewWebpAnimation(150, 150, 0)
 	defer anim.ReleaseMemory()
@@ -115,7 +112,7 @@ func (u *AudonUser) createGIF(avatar image.Image) ([]byte, error) {
 		}
 
 		mask := image.NewUniform(color.Alpha{alpha})
-		draw.DrawMask(frame, frame.Bounds(), mainConfig.LogoImageFront, image.Point{-35, -35}, mask, image.Point{}, draw.Over)
+		draw.DrawMask(frame, frame.Bounds(), mainConfig.LogoImageFront, image.Point{-55, -105}, mask, image.Point{}, draw.Over)
 
 		if err := anim.AddFrame(frame, 1000/count*i, webpConf); err != nil {
 			return nil, err

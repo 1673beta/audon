@@ -14,6 +14,7 @@ export const useMastodonStore = defineStore("mastodon", {
       },
       client: null,
       userinfo: null,
+      avatar: "",
     };
   },
   getters: {
@@ -38,30 +39,19 @@ export const useMastodonStore = defineStore("mastodon", {
       this.userinfo = user;
       this.authorized = true;
     },
-    async updateAvatar(img) {
+    async updateAvatar(img, filename) {
       if (this.client === null) return;
       const avatarBlob = await (await fetch(img)).blob();
       this.userinfo = await this.client.v1.accounts.updateCredentials({
-        avatar: new File([avatarBlob], `${Date.now()}.gif`),
+        avatar: new File([avatarBlob], `${Date.now()}_${filename}`),
       });
     },
     async revertAvatar() {
-      const t = setTimeout(async () => {
-        const token = await axios.get("/api/token");
-        const oldAvatar = sessionStorage.getItem("avatar_old_data");
-        sessionStorage.removeItem("avatar_old_data");
-        sessionStorage.removeItem("avatar_timeout");
-        if (this.client === null || !oldAvatar || !token.data.audon.avatar)
-          return;
-        const resp = await axios.delete("/api/room");
-        if (resp.status === 200) {
-          const avatarBlob = await (await fetch(oldAvatar)).blob();
-          this.userinfo = await this.client.v1.accounts.updateCredentials({
-            avatar: new File([avatarBlob], token.data.audon.avatar),
-          });
-        }
-      }, 1500);
-      sessionStorage.setItem("avatar_timeout", t.toString());
+      const token = await axios.get("/api/token");
+      if (this.avatar && token.data.audon.avatar) {
+        await this.updateAvatar(this.avatar, token.data.audon.avatar);
+      };
+      await axios.delete("/api/room");
     },
   },
 });

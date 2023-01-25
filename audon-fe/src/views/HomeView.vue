@@ -13,6 +13,12 @@ export default {
       query: "",
     };
   },
+  mounted() {
+    removeEventListener("beforeunload", (event) => {
+      event.preventDefault();
+      return (event.returnValue = "");
+    });
+  },
   methods: {
     async onLogout() {
       // if (!confirm(this.$t("logoutConfirm"))) return;

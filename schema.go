@@ -30,7 +30,8 @@ type (
 
 	RoomMetadata struct {
 		*Room
-		Speakers []*AudonUser `json:"speakers"`
+		Speakers         []*AudonUser                `json:"speakers"`
+		MastodonAccounts map[string]*MastodonAccount `json:"accounts"`
 	}
 
 	Room struct {

@@ -177,7 +177,7 @@ func oauthHandler(c echo.Context) (err error) {
 	// return c.Redirect(http.StatusFound, "http://localhost:5173")
 }
 
-func getOAuthTokenHandler(c echo.Context) (err error) {
+func getUserTokenHandler(c echo.Context) (err error) {
 	data, ok := c.Get("data").(*SessionData)
 	if !ok {
 		return ErrInvalidSession

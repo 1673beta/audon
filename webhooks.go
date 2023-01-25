@@ -25,7 +25,8 @@ func livekitWebhookHandler(c echo.Context) error {
 	}
 
 	if event.GetEvent() == webhook.EventRoomFinished {
-		room, err := findRoomByID(c.Request().Context(), event.GetRoom().GetName())
+		lkRoom := event.GetRoom()
+		room, err := findRoomByID(c.Request().Context(), lkRoom.GetName())
 		if err != nil {
 			c.Logger().Error(err)
 			return echo.NewHTTPError(http.StatusNotFound)
@@ -66,34 +67,36 @@ func livekitWebhookHandler(c echo.Context) error {
 			countdown := time.NewTimer(10 * time.Second)
 			webhookTimerCache.Set(audonID, countdown, ttlcache.DefaultTTL)
 
-			<-countdown.C
-			webhookTimerCache.Delete(audonID)
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-			defer cancel()
-			// ctx := context.TODO()
+			go func() {
+				<-countdown.C
+				webhookTimerCache.Delete(audonID)
+				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				defer cancel()
 
-			stillAgain, err := user.InLivekit(ctx)
-			if stillAgain || err != nil {
-				return c.NoContent(http.StatusOK)
-			}
-			user, err = findUserByID(ctx, audonID)
-			if err == nil && user.AvatarFile != "" {
-				log.Printf("restoring avatar: %s\n", audonID)
+				stillAgain, err := user.InLivekit(ctx)
 				if err != nil {
-					c.Logger().Error(err)
-					return echo.NewHTTPError(http.StatusInternalServerError)
+					log.Println(err)
 				}
-				avatar := user.getAvatarImagePath(user.AvatarFile)
-				_, err = updateAvatar(ctx, mastoClient, avatar)
-				if err != nil {
-					c.Logger().Warn(err)
+				if stillAgain {
+					return
 				}
-				user.ClearUserAvatar(ctx)
-				// os.Remove(avatar)
-			} else if err != nil {
-				c.Logger().Error(err)
-				return echo.NewHTTPError(http.StatusInternalServerError)
-			}
+				nextUser, err := findUserByID(ctx, audonID)
+				if err == nil && nextUser.AvatarFile != "" {
+					log.Printf("restoring avatar: %s\n", audonID)
+					if err != nil {
+						log.Println(err)
+						return
+					}
+					avatar := nextUser.getAvatarImagePath(nextUser.AvatarFile)
+					_, err = updateAvatar(ctx, mastoClient, avatar)
+					if err != nil {
+						log.Println(err)
+					}
+					nextUser.ClearUserAvatar(ctx)
+				} else if err != nil {
+					log.Println(err)
+				}
+			}()
 		}
 		return c.NoContent(http.StatusOK)
 	} else if event.GetEvent() == webhook.EventRoomStarted {

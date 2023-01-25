@@ -64,7 +64,7 @@ router.beforeEach(async (to) => {
     }
   }
 });
-router.afterEach((to, from) => {
+router.afterEach((to) => {
   const donStore = useMastodonStore();
   if (!to.meta.noauth && !donStore.authorized) {
     const query = to.name !== "home" ? { l: to.path } : {};

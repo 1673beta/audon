@@ -7,6 +7,7 @@ import { darkTheme } from "picmo";
 import { createPopup } from "@picmo/popup-picker";
 import { Howl } from "howler";
 import Participant from "../components/Participant.vue";
+import JoinDialog from "../components/JoinDialog.vue";
 import {
   mdiMicrophone,
   mdiMicrophoneOff,
@@ -28,7 +29,6 @@ import {
   DataPacket_Kind,
   AudioPresets,
 } from "livekit-client";
-import { createClient } from "masto";
 import { useVuelidate } from "@vuelidate/core";
 import { helpers, maxLength, required } from "@vuelidate/validators";
 import NoSleep from "@uriopass/nosleep.js";
@@ -96,6 +96,7 @@ export default {
   },
   components: {
     Participant,
+    JoinDialog,
   },
   validations() {
     return {
@@ -116,7 +117,7 @@ export default {
   data() {
     return {
       roomID: this.$route.params.id,
-      loading: true,
+      loading: false,
       mainHeight: 700,
       roomInfo: {
         title: this.$t("connecting"),
@@ -126,6 +127,7 @@ export default {
         cohosts: [],
         speakers: [],
         created_at: null,
+        accounts: {},
       },
       editingRoomInfo: {
         title: "",
@@ -146,12 +148,12 @@ export default {
       activeSpeakerIDs: new Set(),
       mutedSpeakerIDs: new Set(),
       micGranted: false,
-      autoplayDisabled: false,
       speakRequests: new Set(),
       showRequestNotification: false,
       showRequestDialog: false,
       showRequestedNotification: false,
       isEditLoading: false,
+      closeLoading: false,
       showEditDialog: false,
       timeElapsed: "",
       preview: false,
@@ -172,7 +174,7 @@ export default {
           this.mutedSpeakerIDs = new Set(Object.keys(this.participants));
           for (const [key, value] of Object.entries(this.participants)) {
             if (value !== null) {
-              this.fetchMastoData(key, value);
+              this.fetchMastoData(key);
             }
           }
         } catch (error) {
@@ -196,13 +198,6 @@ export default {
         } finally {
           this.loading = false;
         }
-      }
-    }
-    if (!this.preview) {
-      try {
-        await this.joinRoom();
-      } finally {
-        this.loading = false;
       }
     }
     setInterval(this.refreshRemoteMuteStatus, 100);
@@ -258,219 +253,175 @@ export default {
       const delta = now.diff(createdAt);
       this.timeElapsed = delta.toFormat("hh:mm:ss");
     },
-    async joinRoom() {
-      if (!this.donStore.authorized) return;
+    async joinRoom(token) {
+      if (!this.donStore.authorized) {
+        this.$router.replace({ name: "home" });
+      }
       try {
-        const timeout = sessionStorage.getItem("avatar_timeout");
-        if (timeout) {
-          const timeoutID = parseInt(timeout);
-          clearTimeout(timeoutID);
-          sessionStorage.removeItem("avatar_timeout");
-        }
-        const token = await axios.get("/api/token");
-        this.donStore.oauth = token.data;
-        let avatarURL = this.donStore.userinfo.avatar;
-        if (this.donStore.oauth.audon?.avatar) {
-          avatarURL = "";
-        }
-        const resp = await axios.postForm(`/api/room/${this.roomID}`, {
-          avatar: avatarURL,
-        });
-        sessionStorage.setItem("avatar_old_data", resp.data.original);
-        if (resp.data.indicator && !timeout) {
-          try {
-            await this.donStore.updateAvatar(resp.data.indicator);
-          } catch (err) {
-            console.log(err);
+        this.loading = true;
+        await this.connectLivekit(token);
+      } catch (error) {
+        alert(this.$t("errors.connectionFailed"));
+      } finally {
+        this.loading = false;
+      }
+    },
+    async connectLivekit(payload) {
+      const self = this;
+      this.roomClient
+        .on(RoomEvent.TrackSubscribed, (track) => {
+          if (track.kind === Track.Kind.Audio) {
+            const element = track.attach();
+            self.$refs.audioDOM.appendChild(element);
           }
-        }
-        const room = new Room();
-        const self = this;
-        room
-          .on(RoomEvent.TrackSubscribed, (track) => {
-            if (track.kind === Track.Kind.Audio) {
-              const element = track.attach();
-              self.$refs.audioDOM.appendChild(element);
-            }
-          })
-          .on(RoomEvent.TrackUnsubscribed, (track) => {
-            track.detach();
-          })
-          .on(RoomEvent.LocalTrackPublished, () => {
-            self.micGranted = true;
-          })
-          .on(RoomEvent.LocalTrackUnpublished, (publication) => {
-            publication.track?.detach();
-          })
-          .on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
-            self.activeSpeakerIDs = new Set(map(speakers, (p) => p.identity));
-          })
-          .on(RoomEvent.ParticipantConnected, (participant) => {
-            if (self.iamHost || self.iamCohost) self.sounds.boop.play();
-            const metadata = self.addParticipant(participant);
-            if (metadata !== null) {
-              self.fetchMastoData(participant.identity, metadata);
-            }
-          })
-          .on(RoomEvent.ParticipantDisconnected, (participant) => {
-            self.participants = omit(self.participants, participant.identity);
-          })
-          .on(RoomEvent.AudioPlaybackStatusChanged, () => {
-            if (!room.canPlaybackAudio) {
-              self.autoplayDisabled = true;
-            }
-          })
-          .on(RoomEvent.Disconnected, (reason) => {
-            // TODO: change this from alert to a vuetify thing
-            self.noSleep.disable();
-            if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
-              alert(self.$t("roomEvent.removed"));
-              self.$router.push({ name: "home" });
-            } else {
-              self.donStore.revertAvatar().finally(() => {
-                let message = "";
-                switch (reason) {
-                  case DisconnectReason.ROOM_DELETED:
-                    message = self.$t("roomEvent.closedByHost");
-                    break;
-                  case DisconnectReason.CLIENT_INITIATED:
-                    break;
-                  default:
-                    message = "Disconnected due to unknown reasons";
+        })
+        .on(RoomEvent.TrackUnsubscribed, (track) => {
+          track.detach();
+        })
+        .on(RoomEvent.LocalTrackPublished, () => {
+          self.micGranted = true;
+        })
+        .on(RoomEvent.LocalTrackUnpublished, (publication) => {
+          publication.track?.detach();
+        })
+        .on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+          self.activeSpeakerIDs = new Set(map(speakers, (p) => p.identity));
+        })
+        .on(RoomEvent.ParticipantConnected, (participant) => {
+          if (self.iamHost || self.iamCohost) self.sounds.boop.play();
+          const metadata = self.addParticipant(participant);
+          if (metadata !== null) {
+            self.fetchMastoData(participant.identity);
+          }
+        })
+        .on(RoomEvent.ParticipantDisconnected, (participant) => {
+          self.participants = omit(self.participants, participant.identity);
+        })
+        .on(RoomEvent.Disconnected, async (reason) => {
+          // TODO: change this from alert to a vuetify thing
+          self.noSleep.disable();
+          if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
+            alert(self.$t("roomEvent.removed"));
+            self.$router.push({ name: "home" });
+          } else {
+            let message = "";
+            switch (reason) {
+              case DisconnectReason.ROOM_DELETED:
+                if (self.iamHost || self.iamCohost) {
+                  self.closeLoading = true;
+                  try {
+                    await self.donStore.revertAvatar();
+                  } catch (error) {
+                    console.log(error);
+                  } finally {
+                    self.closeLoading = false;
+                  }
                 }
-                if (message !== "") {
-                  alert(message);
+                message = self.$t("roomEvent.closedByHost");
+                break;
+              case DisconnectReason.CLIENT_INITIATED:
+                if (self.iamCohost) {
+                  self.closeLoading = true;
+                  try {
+                    await self.donStore.revertAvatar();
+                  } catch (error) {
+                    console.log(error);
+                  } finally {
+                    self.closeLoading = false;
+                  }
                 }
-                self.$router.push({ name: "home" });
-              });
+                break;
+              default:
+                message = "Disconnected due to unknown reasons";
             }
-          })
-          .on(RoomEvent.DataReceived, (payload, participant) => {
-            try {
-              /* data should be like
+            if (message !== "") {
+              alert(message);
+            }
+            self.$router.push({ name: "home" });
+          }
+        })
+        .on(RoomEvent.DataReceived, (payload, participant) => {
+          try {
+            /* data should be like
               { "kind": "speak_request" }
               { "kind": "chat", "data": "..." }
               { "kind": "request_declined", "audon_id": "..."}
               { "kind": "emoji", "emoji": "..." }
               */
-              const strData = self.decoder.decode(payload);
-              const jsonData = JSON.parse(strData);
-              const metadata = JSON.parse(participant.metadata);
-              switch (jsonData?.kind) {
-                case "emoji":
-                  self.addEmojiReaction(participant.identity, jsonData.emoji);
-                  break;
-                case "speak_request": // someone is wanting to be a speaker
-                  self.onSpeakRequestReceived(participant);
-                  break;
-                case "request_declined":
-                  if (
-                    self.isHost(participant.identity) ||
-                    self.isCohost(metadata)
-                  ) {
-                    self.speakRequests.delete(jsonData.audon_id);
-                    if (self.speakRequests.size < 1)
-                      self.showRequestNotification = false;
-                  }
-                  break;
-              }
-            } catch (error) {
-              console.log(
-                "invalida data received from: ",
-                participant.identity
-              );
+            const strData = self.decoder.decode(payload);
+            const jsonData = JSON.parse(strData);
+            const metadata = JSON.parse(participant.metadata);
+            switch (jsonData?.kind) {
+              case "emoji":
+                self.addEmojiReaction(participant.identity, jsonData.emoji);
+                break;
+              case "speak_request": // someone is wanting to be a speaker
+                self.onSpeakRequestReceived(participant);
+                break;
+              case "request_declined":
+                if (
+                  self.isHost(participant.identity) ||
+                  self.isCohost(metadata)
+                ) {
+                  self.speakRequests.delete(jsonData.audon_id);
+                  if (self.speakRequests.size < 1)
+                    self.showRequestNotification = false;
+                }
+                break;
             }
-          })
-          .on(RoomEvent.RoomMetadataChanged, (metadata) => {
-            self.roomInfo = JSON.parse(metadata);
-            self.editingRoomInfo = clone(self.roomInfo);
-            if (!self.roomInfo.speakers) return;
-            for (const speakers of self.roomInfo.speakers) {
-              self.speakRequests.delete(speakers.audon_id);
-              if (self.speakRequests.size < 1)
-                self.showRequestNotification = false;
-            }
-            if (self.iamSpeaker && !self.micGranted) {
-              self.roomClient.localParticipant
-                .setMicrophoneEnabled(true, captureOpts, publishOpts)
-                .then(() => {
-                  self.micGranted = true;
-                })
-                .finally(() => {
-                  self.roomClient.localParticipant.setMicrophoneEnabled(false);
-                });
-            }
-          });
-        await room.connect(resp.data.url, resp.data.token);
-        this.roomClient = room;
-        this.roomInfo = JSON.parse(room.metadata);
-        this.editingRoomInfo = clone(this.roomInfo);
-        this.addParticipant(room.localParticipant);
-        for (const part of room.participants.values()) {
-          this.addParticipant(part);
-        }
-        this.mutedSpeakerIDs.add(this.donStore.oauth.audon.audon_id);
-        this.activeSpeakerIDs = new Set(
-          map(room.activeSpeakers, (p) => p.identity)
-        );
-        // cache mastodon data of current participants
-        for (const [key, value] of Object.entries(this.participants)) {
-          if (value !== null) {
-            this.fetchMastoData(key, value);
+          } catch (error) {
+            console.log("invalida data received from: ", participant.identity);
           }
-        }
-        if (this.iamHost || this.iamCohost || this.iamSpeaker) {
-          try {
-            await room.localParticipant.setMicrophoneEnabled(
-              true,
-              captureOpts,
-              publishOpts
-            );
-          } catch {
-            alert(this.$t("microphoneBlocked"));
-          } finally {
-            await room.localParticipant.setMicrophoneEnabled(false);
+        })
+        .on(RoomEvent.RoomMetadataChanged, (metadata) => {
+          self.roomInfo = JSON.parse(metadata);
+          self.editingRoomInfo = clone(self.roomInfo);
+          if (!self.roomInfo.speakers) return;
+          for (const speakers of self.roomInfo.speakers) {
+            self.speakRequests.delete(speakers.audon_id);
+            if (self.speakRequests.size < 1)
+              self.showRequestNotification = false;
           }
+          if (self.iamSpeaker && !self.micGranted) {
+            self.roomClient.localParticipant
+              .setMicrophoneEnabled(true, captureOpts, publishOpts)
+              .then(() => {
+                self.micGranted = true;
+              })
+              .finally(() => {
+                self.roomClient.localParticipant.setMicrophoneEnabled(false);
+              });
+          }
+        });
+      await this.roomClient.connect(payload.url, payload.token);
+      this.roomInfo = JSON.parse(this.roomClient.metadata);
+      this.editingRoomInfo = clone(this.roomInfo);
+      this.addParticipant(this.roomClient.localParticipant);
+      for (const part of this.roomClient.participants.values()) {
+        this.addParticipant(part);
+      }
+      this.mutedSpeakerIDs.add(this.donStore.oauth.audon.audon_id);
+      this.activeSpeakerIDs = new Set(
+        map(this.roomClient.activeSpeakers, (p) => p.identity)
+      );
+      // cache mastodon data of current participants
+      for (const [key, value] of Object.entries(this.participants)) {
+        if (value !== null) {
+          this.fetchMastoData(key);
         }
-      } catch (error) {
-        let message = "";
-        switch (error.response?.status) {
-          case 403:
-            switch (error.response?.data) {
-              case "following":
-                message = this.$t("errors.restriction.following");
-                break;
-              case "follower":
-                message = this.$t("errors.restriction.follower");
-                break;
-              case "knowing":
-                message = this.$t("errors.restriction.knowing");
-                break;
-              case "mutual":
-                message = this.$t("errors.restriction.mutual");
-                break;
-              case "private":
-                message = this.$t("errors.restriction.private");
-                break;
-              default:
-                message = this.$t("errors.restriction.default");
-            }
-            alert(message);
-            break;
-          case 404:
-            pushNotFound(this.$route);
-            break;
-          case 406:
-            alert(this.$t("errors.alreadyConnected"));
-            break;
-          case 410:
-            alert(this.$t("errors.alreadyClosed"));
-            break;
-          default:
-            alert(error);
+      }
+      if (this.iamHost || this.iamCohost || this.iamSpeaker) {
+        try {
+          await this.roomClient.localParticipant.setMicrophoneEnabled(
+            true,
+            captureOpts,
+            publishOpts
+          );
+        } catch {
+          alert(this.$t("microphoneBlocked"));
+        } finally {
+          await this.roomClient.localParticipant.setMicrophoneEnabled(false);
         }
-        this.noSleep.disable();
-        this.$router.push({ name: "home" });
       }
     },
     refreshRemoteMuteStatus() {
@@ -612,17 +563,24 @@ export default {
       }
       return metadata;
     },
-    async fetchMastoData(identity, { remote_id, remote_url }) {
-      if (this.cachedMastoData[identity] !== undefined) return;
+    async fetchMastoData(identity) {
+      if (
+        this.cachedMastoData[identity] !== undefined ||
+        this.roomInfo.accounts[identity] === undefined
+      )
+        return;
       try {
-        const url = new URL(remote_url);
-        const mastoClient = createClient({
-          url: url.origin,
-          disableVersionCheck: true,
-        });
-        const info = await mastoClient.v1.accounts.fetch(remote_id);
         const resp = await axios.get(`/app/user/${identity}`);
-        info.avatar = `/storage/${resp.data.audon_id}/avatar/${resp.data.avatar}`;
+        const account = this.roomInfo.accounts[identity];
+        const info = {
+          acct: account.acct,
+          displayName: account.displayName,
+          avatar: account.avatar,
+          url: account.url,
+        };
+        if (resp.data.avatar) {
+          info.avatar = `/storage/${resp.data.audon_id}/avatar/${resp.data.avatar}`;
+        }
         this.cachedMastoData[identity] = info;
       } catch (error) {
         // FIXME: display error snackbar
@@ -680,15 +638,6 @@ export default {
     async onLeave() {
       await this.roomClient.disconnect();
     },
-    async onStartListening() {
-      try {
-        await this.roomClient.startAudio();
-        this.autoplayDisabled = false;
-      } catch {
-        alert(this.$t("errors.connectionFailed"));
-        await this.roomClient.disconnect();
-      }
-    },
     async onEditSubmit() {
       this.editingRoomInfo.title = trim(this.editingRoomInfo.title);
       this.editingRoomInfo.description = trim(this.editingRoomInfo.description);
@@ -718,6 +667,20 @@ export default {
 </script>
 
 <template>
+  <v-overlay
+    :model-value="closeLoading"
+    persistent
+    class="align-center justify-center"
+  >
+    <div class="mb-8 text-center">
+      <v-progress-circular indeterminate size="40"></v-progress-circular>
+    </div>
+    <div>
+      <v-alert variant="flat" class="text-center">
+        <span v-html="$t('processing')"></span>
+      </v-alert>
+    </div>
+  </v-overlay>
   <v-dialog v-model="showEditDialog" max-width="500" persistent>
     <v-card :loading="isEditLoading">
       <v-card-title>{{ $t("editRoom") }}</v-card-title>
@@ -760,23 +723,12 @@ export default {
       </v-card-actions>
     </v-card>
   </v-dialog>
-  <v-dialog v-model="autoplayDisabled" max-width="500" persistent>
-    <v-alert color="indigo">
-      <div class="mb-5">
-        {{ $t("browserMuted") }}
-      </div>
-      <div class="text-center mb-3">
-        <v-btn color="gray" @click="onStartListening">{{
-          $t("startListening")
-        }}</v-btn>
-      </div>
-      <div class="text-center">
-        <v-btn variant="text" @click="roomClient.disconnect()">{{
-          $t("leaveRoom")
-        }}</v-btn>
-      </div>
-    </v-alert>
-  </v-dialog>
+  <JoinDialog
+    v-if="!preview"
+    :room-id="roomID"
+    :room-client="roomClient"
+    @connect.once="joinRoom"
+  ></JoinDialog>
   <v-dialog v-model="showRequestDialog" max-width="500">
     <v-card max-height="600" class="d-flex flex-column">
       <v-card-title>{{ $t("speakRequest.label") }}</v-card-title>

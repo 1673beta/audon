@@ -169,7 +169,8 @@ func main() {
 	e.POST("/app/webhook", livekitWebhookHandler)
 
 	api := e.Group("/api", authMiddleware)
-	api.GET("/token", getOAuthTokenHandler)
+	api.GET("/token", getUserTokenHandler)
+	// api.GET("/room", getStatusHandler)
 	api.POST("/room", createRoomHandler)
 	api.DELETE("/room", leaveRoomHandler)
 	api.POST("/room/:id", joinRoomHandler)
