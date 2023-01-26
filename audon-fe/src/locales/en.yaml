@@ -46,6 +46,7 @@ roomReady:
   header: "Your room is ready!"
   message: "Your room \"{title}\" is now ready. Share the following URL with other participants."
 errors:
+  offline: "This user is offline now."
   invalidAddress: "Invalid address"
   serverNotFound: "Instance not found"
   notFound: "{value} not found"

@@ -64,13 +64,13 @@ func livekitWebhookHandler(c echo.Context) error {
 					<-oldTimer.C
 				}
 			}
-			countdown := time.NewTimer(10 * time.Second)
+			countdown := time.NewTimer(60 * time.Second)
 			webhookTimerCache.Set(audonID, countdown, ttlcache.DefaultTTL)
 
 			go func() {
 				<-countdown.C
 				webhookTimerCache.Delete(audonID)
-				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 
 				stillAgain, err := user.InLivekit(ctx)

@@ -1,6 +1,7 @@
 <script>
 import { useMastodonStore } from "../stores/mastodon";
 import axios from "axios";
+import { some } from "lodash-es";
 
 export default {
   setup() {
@@ -10,8 +11,15 @@ export default {
   },
   data() {
     return {
+      canCreate: true,
       query: "",
     };
+  },
+  async created() {
+    const resp = await axios.get("/api/room");
+    if (resp.data.length > 0) {
+      this.canCreate = !some(resp.data, { role: "host" });
+    }
   },
   methods: {
     async onLogout() {
@@ -63,9 +71,13 @@ export default {
         <v-text-field v-mode="query"></v-text-field>
       </v-col> -->
       <v-col cols="12">
-        <v-btn block :to="{ name: 'create' }" color="indigo">{{
-          $t("createNewRoom")
-        }}</v-btn>
+        <v-btn
+          :disabled="!canCreate"
+          block
+          :to="{ name: 'create' }"
+          color="indigo"
+          >{{ $t("createNewRoom") }}</v-btn
+        >
       </v-col>
     </v-row>
   </main>

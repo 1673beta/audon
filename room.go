@@ -35,6 +35,23 @@ func createRoomHandler(c echo.Context) error {
 	host := c.Get("user").(*AudonUser)
 	room.Host = host
 
+	// check if user is already hosting
+	lkRooms, err := host.GetCurrentLivekitRooms(c.Request().Context())
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	for _, r := range lkRooms {
+		meta, err := getRoomMetadataFromLivekitRoom(r)
+		if err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+		if meta.Host.Equal(host) {
+			return ErrOperationNotPermitted
+		}
+	}
+
 	coll := mainDB.Collection(COLLECTION_ROOM)
 
 	now := time.Now().UTC()

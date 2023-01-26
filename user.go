@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -51,13 +53,56 @@ func getUserHandler(c echo.Context) error {
 func getStatusHandler(c echo.Context) error {
 	u := c.Get("user").(*AudonUser)
 
-	ids, err := u.GetCurrentRoomIDs(c.Request().Context())
+	status, err := u.GetCurrentRoomStatus(c.Request().Context())
 	if err != nil {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
-	return c.JSON(http.StatusOK, ids)
+	return c.JSON(http.StatusOK, status)
+}
+
+func redirectUserHandler(c echo.Context) error {
+	input := c.Param("webfinger")
+	if err := mainValidator.Var(&input, "required,startswith=@,min=4"); err != nil {
+		return wrapValidationError(err)
+	}
+	webfinger := input[1:]
+	if err := mainValidator.Var(&webfinger, "email"); err != nil {
+		return wrapValidationError(err)
+	}
+
+	user, err := findUserByWebfinger(c.Request().Context(), webfinger)
+	if err != nil || user == nil {
+		return ErrUserNotFound
+	}
+
+	rooms, err := user.GetCurrentLivekitRooms(c.Request().Context())
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	for _, r := range rooms {
+		meta, err := getRoomMetadataFromLivekitRoom(r)
+		if err != nil {
+			continue
+		}
+		if meta.Host.Equal(user) {
+			return c.Redirect(http.StatusFound, fmt.Sprintf("/r/%s", r.GetName()))
+		}
+	}
+
+	query := make(url.Values)
+	query.Add("url", user.RemoteURL)
+	result := url.URL{
+		Path:       "/error/offline",
+		ForceQuery: true,
+		OmitHost:   true,
+		RawQuery:   query.Encode(),
+	}
+
+	return c.Redirect(http.StatusFound, result.String())
 }
 
 func (a *AudonUser) Equal(u *AudonUser) bool {
@@ -90,14 +135,31 @@ func (a *AudonUser) ClearUserAvatar(ctx context.Context) error {
 	return err
 }
 
-func (a *AudonUser) GetCurrentRoomIDs(ctx context.Context) ([]string, error) {
+type UserStatus struct {
+	RoomID string `json:"roomID"`
+	Role   string `json:"role"`
+}
+
+func (a *AudonUser) GetCurrentRoomStatus(ctx context.Context) ([]UserStatus, error) {
 	rooms, err := a.GetCurrentLivekitRooms(ctx)
 	if err != nil {
 		return nil, err
 	}
-	roomIDs := make([]string, len(rooms))
+	roomList := make([]UserStatus, len(rooms))
 	for i, r := range rooms {
-		roomIDs[i] = r.GetName()
+		meta, _ := getRoomMetadataFromLivekitRoom(r)
+		role := "listener"
+		if meta.Room.IsHost(a) {
+			role = "host"
+		} else if meta.Room.IsCoHost(a) {
+			role = "cohost"
+		} else if meta.IsSpeaker(a) {
+			role = "speaker"
+		}
+		roomList[i] = UserStatus{
+			RoomID: r.GetName(),
+			Role:   role,
+		}
 	}
-	return roomIDs, nil
+	return roomList, nil
 }

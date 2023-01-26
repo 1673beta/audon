@@ -1,7 +1,8 @@
 import { createRouter, createWebHistory } from "vue-router";
 import LoginView from "../views/LoginView.vue";
 import RoomView from "../views/RoomView.vue";
-import NotFoundView from "../views/NotFoundView.vue";
+import ErrorView from "../views/ErrorView.vue";
+import axios from "axios";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,7 +13,15 @@ const router = createRouter({
       meta: {
         noauth: true,
       },
-      component: NotFoundView,
+      component: ErrorView,
+    },
+    {
+      path: "/error/:type",
+      name: "error",
+      meta: {
+        noauth: true,
+      },
+      component: ErrorView,
     },
     {
       path: "/",
@@ -39,6 +48,27 @@ const router = createRouter({
         noauth: true,
       },
       component: RoomView,
+    },
+    {
+      path: "/u/:webfinger",
+      name: "currentHosting",
+      meta: {
+        noauth: true,
+      },
+      redirect: async (to) => {
+        try {
+          const resp = await axios.get(`/u/${to.params.webfinger}`);
+          if (resp.status === 302) {
+            return {
+              name: "room",
+              params: { id: resp.headers.location },
+            };
+          }
+        } catch (error) {
+          console.log(error);
+        }
+        return { name: "notfound" };
+      },
     },
   ],
 });

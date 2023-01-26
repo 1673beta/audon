@@ -32,7 +32,15 @@ export default {
       clipboard: useClipboard(),
     };
   },
-  created() {
+  async created() {
+    const resp = await axios.get("/api/room");
+    if (resp.data.length > 0) {
+      const canCreate = !some(resp.data, { role: "host" });
+      if (!canCreate) {
+        alert(this.$t("errors.alreadyAdded"));
+        this.$router.replace({ name: "home" });
+      }
+    }
     this.cohostSearch = debounce(this.search, 1000);
   },
   unmounted() {

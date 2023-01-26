@@ -174,7 +174,6 @@ func oauthHandler(c echo.Context) (err error) {
 	}
 
 	return c.Redirect(http.StatusFound, req.Redirect)
-	// return c.Redirect(http.StatusFound, "http://localhost:5173")
 }
 
 func getUserTokenHandler(c echo.Context) (err error) {

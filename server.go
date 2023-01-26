@@ -182,6 +182,7 @@ func main() {
 	e.Static("/static", "audon-fe/dist/static")
 	e.Static("/storage", mainConfig.StorageDir)
 	e.GET("/r/:id", renderRoomHandler)
+	e.GET("/u/:webfinger", redirectUserHandler)
 	e.GET("/*", func(c echo.Context) error {
 		return c.Render(http.StatusOK, "tmpl", &TemplateData{Config: &mainConfig.AppConfigBase})
 	})

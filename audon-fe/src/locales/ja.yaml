@@ -46,6 +46,7 @@ roomReady:
   header: "お部屋の用意ができました！"
   message: "{title} を作りました。参加者に以下の URL を共有してください。"
 errors:
+  offline: "このユーザーは現在オフラインです。"
   invalidAddress: "アドレスが有効ではありません"
   serverNotFound: "サーバーが見つかりません"
   notFound: "{value} が見つかりません"

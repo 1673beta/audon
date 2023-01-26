@@ -557,11 +557,7 @@ export default {
       return metadata;
     },
     async fetchMastoData(identity) {
-      if (
-        this.cachedMastoData[identity] !== undefined ||
-        this.roomInfo.accounts[identity] === undefined
-      )
-        return;
+      if (this.roomInfo.accounts[identity] === undefined) return;
       try {
         const resp = await axios.get(`/app/user/${identity}`);
         const account = this.roomInfo.accounts[identity];

@@ -133,6 +133,15 @@ func (r *Room) IsHost(u *AudonUser) bool {
 	return r != nil && r.Host.Equal(u)
 }
 
+func (r *RoomMetadata) IsSpeaker(u *AudonUser) bool {
+	for _, s := range r.Speakers {
+		if s.Equal(u) {
+			return true
+		}
+	}
+	return false
+}
+
 func getRoomMetadataFromLivekitRoom(lkRoom *livekit.Room) (*RoomMetadata, error) {
 	metadata := new(RoomMetadata)
 	if err := json.Unmarshal([]byte(lkRoom.GetMetadata()), metadata); err != nil {
@@ -236,6 +245,15 @@ func findUserByID(ctx context.Context, audonID string) (*AudonUser, error) {
 	var result AudonUser
 	coll := mainDB.Collection(COLLECTION_USER)
 	if err := coll.FindOne(ctx, bson.D{{Key: "audon_id", Value: audonID}}).Decode(&result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func findUserByWebfinger(ctx context.Context, webfinger string) (*AudonUser, error) {
+	var result AudonUser
+	coll := mainDB.Collection(COLLECTION_USER)
+	if err := coll.FindOne(ctx, bson.D{{Key: "webfinger", Value: webfinger}}).Decode(&result); err != nil {
 		return nil, err
 	}
 	return &result, nil
