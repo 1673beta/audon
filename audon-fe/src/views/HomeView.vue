@@ -86,7 +86,12 @@ export default {
       <v-alert :icon="mdiLinkVariant" :title="$t('staticLink.title')">
         <div class="my-1">
           <h4 style="word-break: break-all">
-            <a :href="donStore.myStaticLink" @click.prevent="">{{ donStore.myStaticLink }}</a>
+            <a
+              :href="donStore.myStaticLink"
+              @click.prevent=""
+              class="text-white"
+              >{{ donStore.myStaticLink }}</a
+            >
           </h4>
         </div>
         <p>{{ $t("staticLink.hint") }}</p>
