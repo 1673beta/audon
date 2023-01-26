@@ -104,11 +104,13 @@ export default {
       if (!donURL) return "";
       const url = new URL(donURL);
       const texts = [
-        this.$t("shareRoomMessage", { link: this.roomURL, title: this.title }),
+        this.$t("shareRoomMessage", {
+          link: this.donStore.myStaticLink,
+          title: this.title,
+        }),
       ];
       if (this.description)
         texts.push(truncate("\n" + this.description, { length: 200 }));
-      texts.push("\n#Audon");
       return encodeURI(`${url.origin}/share?text=${texts.join("\n")}`);
     },
   },
@@ -209,7 +211,7 @@ export default {
         {{ $t("roomReady.message", { title }) }}
       </div>
       <div class="my-3">
-        <h3 style="word-break: break-all">{{ roomURL }}</h3>
+        <h3 style="word-break: break-all">{{ donStore.myStaticLink }}</h3>
       </div>
       <div>
         <v-btn
@@ -221,7 +223,7 @@ export default {
           >{{ $t("share") }}</v-btn
         >
         <v-btn
-          @click="clipboard.copy(roomURL)"
+          @click="clipboard.copy(donStore.myStaticLink)"
           color="lime"
           size="small"
           :prepend-icon="
@@ -230,7 +232,10 @@ export default {
           >{{ clipboard.copied.value ? $t("copied") : $t("copy") }}</v-btn
         >
       </div>
-      <div class="text-center mt-10 mb-1">
+      <v-alert class="mt-5" density="compact" type="warning" variant="tonal">{{
+        $t("roomReady.timeout", { minutes: 5 })
+      }}</v-alert>
+      <div class="text-center mt-5 mb-1">
         <v-btn
           color="indigo"
           :to="{ name: 'room', params: { id: createdRoomID } }"

@@ -10,9 +10,8 @@ export default {
     if (!type) return;
 
     if (type === "offline") {
-      const target = new URL(decodeURI(this.$route.query.url));
       alert(this.$t("errors.offline"));
-      window.location.href = target.toString();
+      this.$router.push({ name: "home" });
     }
   },
 };

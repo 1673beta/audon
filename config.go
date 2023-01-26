@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -30,11 +32,12 @@ type (
 	}
 
 	LivekitConfig struct {
-		APIKey      string `validate:"required,ascii"`
-		APISecret   string `validate:"required,ascii"`
-		Host        string `validate:"required,hostname|hostname_port"`
-		LocalDomain string `validate:"required,hostname|hostname_port"`
-		URL         *url.URL
+		APIKey           string `validate:"required,ascii"`
+		APISecret        string `validate:"required,ascii"`
+		Host             string `validate:"required,hostname|hostname_port"`
+		LocalDomain      string `validate:"required,hostname|hostname_port"`
+		URL              *url.URL
+		EmptyRoomTimeout time.Duration `validate:"required"`
 	}
 
 	DBConfig struct {
@@ -164,11 +167,16 @@ func loadConfig(envname string) (*AppConfig, error) {
 	appConf.Redis = redisConf
 
 	// Setup LiveKit config
+	timeout, err := strconv.Atoi(os.Getenv("LIVEKIT_EMPTY_ROOM_TIMEOUT"))
+	if err != nil {
+		return nil, err
+	}
 	lkConf := &LivekitConfig{
-		APIKey:      os.Getenv("LIVEKIT_API_KEY"),
-		APISecret:   os.Getenv("LIVEKIT_API_SECRET"),
-		Host:        os.Getenv("LIVEKIT_HOST"),
-		LocalDomain: os.Getenv("LIVEKIT_LOCAL_DOMAIN"),
+		APIKey:           os.Getenv("LIVEKIT_API_KEY"),
+		APISecret:        os.Getenv("LIVEKIT_API_SECRET"),
+		Host:             os.Getenv("LIVEKIT_HOST"),
+		LocalDomain:      os.Getenv("LIVEKIT_LOCAL_DOMAIN"),
+		EmptyRoomTimeout: time.Duration(timeout) * time.Second,
 	}
 	if err := mainValidator.Struct(lkConf); err != nil {
 		return nil, err

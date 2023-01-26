@@ -53,8 +53,9 @@ var (
 	mainConfig          *AppConfig
 	lkRoomServiceClient *lksdk.RoomServiceClient
 	localeBundle        *i18n.Bundle
-	roomSessionCache    *ttlcache.Cache[string, *SessionData]
+	userSessionCache    *ttlcache.Cache[string, *SessionData]
 	webhookTimerCache   *ttlcache.Cache[string, *time.Timer]
+	orphanRooms         *ttlcache.Cache[string, bool]
 )
 
 func init() {
@@ -154,10 +155,12 @@ func main() {
 	e.Use(session.Middleware(redisStore))
 
 	// Setup caches
-	roomSessionCache = ttlcache.New(ttlcache.WithTTL[string, *SessionData](24 * time.Hour))
+	userSessionCache = ttlcache.New(ttlcache.WithTTL[string, *SessionData](24 * time.Hour))
 	webhookTimerCache = ttlcache.New(ttlcache.WithTTL[string, *time.Timer](60 * time.Second))
-	go roomSessionCache.Start()
+	orphanRooms = ttlcache.New(ttlcache.WithTTL[string, bool](24 * time.Hour))
+	go userSessionCache.Start()
 	go webhookTimerCache.Start()
+	go orphanRooms.Start()
 
 	e.POST("/app/login", loginHandler)
 	e.GET("/app/oauth", oauthHandler)
@@ -203,8 +206,9 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	e.Logger.Print("Attempting graceful shutdown")
 	defer shutdownCancel()
-	roomSessionCache.DeleteAll()
+	userSessionCache.DeleteAll()
 	webhookTimerCache.DeleteAll()
+	orphanRooms.DeleteAll()
 	if err := e.Shutdown(shutdownCtx); err != nil {
 		e.Logger.Fatalf("Failed shutting down gracefully: %s\n", err.Error())
 	}

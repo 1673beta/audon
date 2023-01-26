@@ -26,8 +26,8 @@ comingFuture: "Coming with future update!"
 processing: "Processing now...<br />Keep this window open!"
 lostWarning: "Unsaved data will be lost if you leave the page, are you sure?"
 staticLink:
-  title: "Your Static Link"
-  hint: "Other can join to your room via this link while you're hosting."
+  title: "Your Audon Link"
+  hint: "Other can join to your room via this personal link while you're hosting."
 form:
   title: "Title"
   titleRequired: "Room title required"
@@ -48,6 +48,7 @@ shareRoomMessage: "Join my Audon room!\n{link}\n\nTitle: {title}"
 roomReady:
   header: "Your room is ready!"
   message: "Your room \"{title}\" is now ready. Share the following URL with other participants."
+  timeout: "The room will be closed automatically if no one joins within {minutes} minutes."
 errors:
   offline: "This user is not hosting now."
   invalidAddress: "Invalid address"

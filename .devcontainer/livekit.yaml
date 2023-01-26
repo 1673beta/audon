@@ -20,7 +20,7 @@ webhook:
 
 room:
   auto_create: false
-  empty_timeout: 3600
+  empty_timeout: 30
   max_participants: 0
   max_metadata_size: 0
 

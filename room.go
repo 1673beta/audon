@@ -99,6 +99,8 @@ func createRoomHandler(c echo.Context) error {
 	}
 	room.RoomID = canonic()
 
+	room.CreatedAt = now
+
 	// if cohosts are already registered, retrieve their data from DB
 	for i, cohost := range room.CoHosts {
 		cohostUser, err := findUserByRemote(c.Request().Context(), cohost.RemoteID, cohost.RemoteURL)
@@ -111,6 +113,37 @@ func createRoomHandler(c echo.Context) error {
 		c.Logger().Error(insertErr)
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
+
+	// Create livekit room
+	roomMetadata := &RoomMetadata{Room: room, MastodonAccounts: make(map[string]*MastodonAccount)}
+	metadata, _ := json.Marshal(roomMetadata)
+	_, err = lkRoomServiceClient.CreateRoom(c.Request().Context(), &livekit.CreateRoomRequest{
+		Name:     room.RoomID,
+		Metadata: string(metadata),
+	})
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusConflict)
+	}
+	countdown := time.NewTimer(mainConfig.Livekit.EmptyRoomTimeout)
+	orphanRooms.Set(room.RoomID, true, ttlcache.DefaultTTL)
+
+	go func(r *Room, logger echo.Logger) {
+		<-countdown.C
+
+		if orphaned := orphanRooms.Get(r.RoomID); orphaned == nil {
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		if !r.IsAnyomeInLivekitRoom(ctx) {
+			if err := endRoom(ctx, r); err != nil {
+				logger.Error(err)
+			}
+		}
+	}(room, c.Logger())
 
 	return c.String(http.StatusCreated, room.RoomID)
 }
@@ -402,50 +435,31 @@ func joinRoomHandler(c echo.Context) (err error) {
 		c.Logger().Error(err)
 	}
 
-	// Create room in LiveKit if it doesn't exist
-	if lkRoom == nil {
-		room.CreatedAt = now
-		coll := mainDB.Collection(COLLECTION_ROOM)
-		if _, err := coll.UpdateOne(c.Request().Context(),
-			bson.D{{Key: "room_id", Value: roomID}},
-			bson.D{{Key: "$set", Value: bson.D{{Key: "created_at", Value: now}}}}); err != nil {
-			c.Logger().Error(err)
-			return echo.NewHTTPError(http.StatusInternalServerError)
-		}
-		metadata, _ := json.Marshal(roomMetadata)
-		_, err = lkRoomServiceClient.CreateRoom(c.Request().Context(), &livekit.CreateRoomRequest{
-			Name:     room.RoomID,
-			Metadata: string(metadata),
-		})
-		if err != nil {
-			c.Logger().Error(err)
-			return echo.NewHTTPError(http.StatusConflict)
-		}
-	} else {
-		currentMeta, err := getRoomMetadataFromLivekitRoom(lkRoom)
-		if err != nil {
-			c.Logger().Error(err)
-			return echo.NewHTTPError(http.StatusInternalServerError)
-		}
-		currentMeta.MastodonAccounts[user.AudonID] = mastoAccount
-		newMetadata, err := json.Marshal(currentMeta)
-		if err != nil {
-			c.Logger().Error(err)
-			return echo.NewHTTPError(http.StatusInternalServerError)
-		}
-		_, err = lkRoomServiceClient.UpdateRoomMetadata(c.Request().Context(), &livekit.UpdateRoomMetadataRequest{
-			Room:     roomID,
-			Metadata: string(newMetadata),
-		})
-		if err != nil {
-			c.Logger().Error(err)
-			return echo.NewHTTPError(http.StatusInternalServerError)
-		}
+	// Update room metadata
+	currentMeta, err := getRoomMetadataFromLivekitRoom(lkRoom)
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	currentMeta.MastodonAccounts[user.AudonID] = mastoAccount
+	newMetadata, err := json.Marshal(currentMeta)
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	_, err = lkRoomServiceClient.UpdateRoomMetadata(c.Request().Context(), &livekit.UpdateRoomMetadataRequest{
+		Room:     roomID,
+		Metadata: string(newMetadata),
+	})
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
 	// Store user's session data in cache
 	data, _ := getSessionData(c)
-	roomSessionCache.Set(user.AudonID, data, ttlcache.DefaultTTL)
+	userSessionCache.Set(user.AudonID, data, ttlcache.DefaultTTL)
+	orphanRooms.Delete(roomID)
 
 	return c.JSON(http.StatusOK, resp)
 }

@@ -47,11 +47,10 @@ func livekitWebhookHandler(c echo.Context) error {
 		}
 		still, err := user.InLivekit(c.Request().Context())
 		if !still && err == nil {
-			data := roomSessionCache.Get(audonID)
+			data := userSessionCache.Get(audonID)
 			if data == nil {
 				return echo.NewHTTPError(http.StatusGone)
 			}
-			roomSessionCache.Delete(audonID)
 			mastoClient := getMastodonClient(data.Value())
 			if mastoClient == nil {
 				c.Logger().Errorf("unable to get mastodon client: %v", data.Value().MastodonConfig)
@@ -93,6 +92,7 @@ func livekitWebhookHandler(c echo.Context) error {
 						log.Println(err)
 					}
 					nextUser.ClearUserAvatar(ctx)
+					userSessionCache.Delete(audonID)
 				} else if err != nil {
 					log.Println(err)
 				}

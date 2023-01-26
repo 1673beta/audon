@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	mastodon "github.com/mattn/go-mastodon"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type MastodonAccount struct {
@@ -77,19 +78,13 @@ func redirectUserHandler(c echo.Context) error {
 		return ErrUserNotFound
 	}
 
-	rooms, err := user.GetCurrentLivekitRooms(c.Request().Context())
-	if err != nil {
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError)
-	}
+	coll := mainDB.Collection(COLLECTION_ROOM)
+	opts := options.FindOne().SetSort(bson.D{{Key: "created_at", Value: -1}})
+	var room Room
 
-	for _, r := range rooms {
-		meta, err := getRoomMetadataFromLivekitRoom(r)
-		if err != nil {
-			continue
-		}
-		if meta.Host.Equal(user) {
-			return c.Redirect(http.StatusFound, fmt.Sprintf("/r/%s", r.GetName()))
+	if err := coll.FindOne(c.Request().Context(), bson.D{{Key: "host.audon_id", Value: user.AudonID}}, opts).Decode(&room); err == nil {
+		if room.ExistsInLivekit(c.Request().Context()) {
+			return c.Redirect(http.StatusFound, fmt.Sprintf("/r/%s", room.RoomID))
 		}
 	}
 
