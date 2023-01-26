@@ -24,6 +24,13 @@ export const useMastodonStore = defineStore("mastodon", {
       }
       return "";
     },
+    myStaticLink() {
+      if (this.oauth.audon?.webfinger) {
+        const url = new URL(location.href);
+        return `${url.origin}/u/@${this.oauth.audon.webfinger}`;
+      }
+      return "";
+    }
   },
   actions: {
     async fetchToken() {

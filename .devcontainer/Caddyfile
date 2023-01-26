@@ -5,10 +5,14 @@ audon.localhost {
             path /app/* /api/* /storage/* /u/*
     }
     handle @backend {
-            reverse_proxy devcontainer:8100
+            reverse_proxy devcontainer:8100 {
+                flush_interval -1
+            }
     }
     handle {
-            reverse_proxy devcontainer:5173
+            reverse_proxy devcontainer:5173 {
+                flush_interval -1
+            }
     }
 }
 

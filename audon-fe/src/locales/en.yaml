@@ -25,6 +25,9 @@ editRoom: "Room Edit"
 comingFuture: "Coming with future update!"
 processing: "Processing now...<br />Keep this window open!"
 lostWarning: "Unsaved data will be lost if you leave the page, are you sure?"
+staticLink:
+  title: "Your Static Link"
+  hint: "Other can join to your room via this link while you're hosting."
 form:
   title: "Title"
   titleRequired: "Room title required"
@@ -46,7 +49,7 @@ roomReady:
   header: "Your room is ready!"
   message: "Your room \"{title}\" is now ready. Share the following URL with other participants."
 errors:
-  offline: "This user is offline now."
+  offline: "This user is not hosting now."
   invalidAddress: "Invalid address"
   serverNotFound: "Instance not found"
   notFound: "{value} not found"

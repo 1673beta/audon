@@ -2,10 +2,12 @@
 import { useMastodonStore } from "../stores/mastodon";
 import axios from "axios";
 import { some } from "lodash-es";
+import { mdiLinkVariant } from "@mdi/js";
 
 export default {
   setup() {
     return {
+      mdiLinkVariant,
       donStore: useMastodonStore(),
     };
   },
@@ -49,7 +51,7 @@ export default {
         {{ $t("logout") }}
       </v-btn>
     </div>
-    <div class="text-center my-10">
+    <div class="text-center my-8">
       <v-avatar class="rounded" size="100">
         <v-img
           :src="donStore.userinfo?.avatar"
@@ -80,5 +82,15 @@ export default {
         >
       </v-col>
     </v-row>
+    <div class="d-flex justify-center mt-6">
+      <v-alert :icon="mdiLinkVariant" :title="$t('staticLink.title')">
+        <div class="my-1">
+          <h4 style="word-break: break-all">
+            <a :href="donStore.myStaticLink" @click.prevent="">{{ donStore.myStaticLink }}</a>
+          </h4>
+        </div>
+        <p>{{ $t("staticLink.hint") }}</p>
+      </v-alert>
+    </div>
   </main>
 </template>

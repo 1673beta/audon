@@ -20,6 +20,7 @@
 
 # Go workspace file
 go.work
+__debug_bin
 
 ### Node ###
 # Logs

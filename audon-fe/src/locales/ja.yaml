@@ -25,6 +25,9 @@ editRoom: "部屋の編集"
 comingFuture: "今後のアップデートで追加予定"
 processing: "処理中です。<br />画面を閉じないでください。"
 lostWarning: "この画面を閉じると保存前の内容が失われます。構いませんか？"
+staticLink:
+  title: "固定リンク"
+  hint: "プロフィール欄などに固定しておくと、あなたが部屋をホストしたとき他の人はこのリンクを使って参加できます。"
 form:
   title: "タイトル"
   titleRequired: "部屋の名前を入力してください"
@@ -46,7 +49,7 @@ roomReady:
   header: "お部屋の用意ができました！"
   message: "{title} を作りました。参加者に以下の URL を共有してください。"
 errors:
-  offline: "このユーザーは現在オフラインです。"
+  offline: "このユーザーは現在ホスト中ではありません。"
   invalidAddress: "アドレスが有効ではありません"
   serverNotFound: "サーバーが見つかりません"
   notFound: "{value} が見つかりません"
