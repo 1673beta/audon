@@ -48,7 +48,7 @@ shareRoomMessage: "Join my Audon room!\n{link}\n\nTitle: {title}"
 roomReady:
   header: "Your room is ready!"
   message: "Your room \"{title}\" is now ready. Share the following URL with other participants."
-  timeout: "The room will be closed automatically if no one joins within {minutes} minutes."
+  timeout: "The room will be closed automatically if you don't join within {minutes} minutes."
 errors:
   offline: "This user is not hosting now."
   invalidAddress: "Invalid address"
