@@ -26,9 +26,12 @@ func verifyTokenInSession(c echo.Context) (bool, *mastodon.Account, error) {
 	}
 
 	acc, err := mastoClient.GetAccountCurrentUser(c.Request().Context())
+	acctUrl, _ := url.Parse(acc.URL)
+	finger := strings.Split(acc.Username, "@")
+	webfinger := fmt.Sprintf("%s@%s", finger[0], acctUrl.Host)
 	user, dbErr := findUserByID(c.Request().Context(), data.AudonID)
 
-	if err != nil || dbErr != nil || string(acc.ID) != user.RemoteID {
+	if err != nil || dbErr != nil || webfinger != user.Webfinger {
 		return false, nil, err
 	}
 
