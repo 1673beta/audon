@@ -22,41 +22,17 @@ import (
 	"gopkg.in/gographics/imagick.v2/imagick"
 )
 
-func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte, room *Room) ([]byte, error) {
+func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte, room *Room) ([]byte, []byte, error) {
 	if u == nil {
-		return nil, errors.New("nil user")
+		return nil, nil, errors.New("nil user")
 	}
 
 	mtype := mimetype.Detect(fnew)
 	if !mimetype.EqualsAny(mtype.String(), "image/png", "image/jpeg", "image/webp", "image/gif") {
-		return nil, errors.New("file type not supported")
+		return nil, nil, errors.New("file type not supported")
 	}
-
-	hash := sha256.Sum256(fnew)
 
 	var err error
-
-	// Check if user's original avatar exists
-	saved := u.GetOriginalAvatarPath(hash, mtype)
-	if _, err := os.Stat(saved); err != nil {
-		if err := os.MkdirAll(filepath.Dir(saved), 0775); err != nil {
-			return nil, err
-		}
-		// Write user's avatar if the original version doesn't exist
-		if err := os.WriteFile(saved, fnew, 0664); err != nil {
-			return nil, err
-		}
-	}
-
-	fname := filepath.Base(saved)
-	coll := mainDB.Collection(COLLECTION_USER)
-	if _, err = coll.UpdateOne(ctx,
-		bson.D{{Key: "audon_id", Value: u.AudonID}},
-		bson.D{
-			{Key: "$set", Value: bson.D{{Key: "avatar", Value: fname}}},
-		}); err != nil {
-		return nil, err
-	}
 
 	buf := bytes.NewReader(fnew)
 
@@ -71,9 +47,45 @@ func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte, room *Room) (
 		newImg, err = gif.Decode(buf)
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return u.createGIF(newImg, room.IsHost(u) || room.IsCoHost(u))
+
+	// encode to png to avoid recompression
+	origBuf := new(bytes.Buffer)
+	if err := png.Encode(origBuf, newImg); err != nil {
+		return nil, nil, err
+	}
+	origPng := origBuf.Bytes()
+	hash := sha256.Sum256(origPng)
+
+	// Check if user's original avatar exists
+	filename := fmt.Sprintf("%x.png", hash)
+	saved := u.getAvatarImagePath(filename)
+	if _, err := os.Stat(saved); err != nil {
+		if err := os.MkdirAll(filepath.Dir(saved), 0775); err != nil {
+			return nil, nil, err
+		}
+		// Write user's avatar if the original version doesn't exist
+		if err := os.WriteFile(saved, origPng, 0664); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	coll := mainDB.Collection(COLLECTION_USER)
+	if _, err = coll.UpdateOne(ctx,
+		bson.D{{Key: "audon_id", Value: u.AudonID}},
+		bson.D{
+			{Key: "$set", Value: bson.D{{Key: "avatar", Value: filename}}},
+		}); err != nil {
+		return nil, nil, err
+	}
+
+	indicator, err := u.createGIF(newImg, room.IsHost(u) || room.IsCoHost(u))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return indicator, origPng, nil
 }
 
 func (u *AudonUser) createGIF(avatar image.Image, blue bool) ([]byte, error) {
@@ -129,7 +141,7 @@ func (u *AudonUser) createGIF(avatar image.Image, blue bool) ([]byte, error) {
 	return os.ReadFile(u.GetGIFAvatarPath())
 }
 
-func (u *AudonUser) GetOriginalAvatarPath(hash [sha256.Size]byte, mtype *mimetype.MIME) string {
+func (u *AudonUser) getOriginalAvatarPath(hash [sha256.Size]byte, mtype *mimetype.MIME) string {
 	filename := fmt.Sprintf("%x%s", hash, mtype.Extension())
 	return u.getAvatarImagePath(filename)
 }

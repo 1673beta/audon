@@ -12,7 +12,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gabriel-vasile/mimetype"
 	"github.com/jaevor/go-nanoid"
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/labstack/echo/v4"
@@ -380,7 +379,7 @@ func joinRoomHandler(c echo.Context) (err error) {
 	if user.AvatarFile != "" {
 		orig, err := os.ReadFile(user.getAvatarImagePath(user.AvatarFile))
 		if err == nil && orig != nil {
-			resp.Original = fmt.Sprintf("data:%s;base64,%s", mimetype.Detect(orig), base64.StdEncoding.EncodeToString(orig))
+			resp.Original = fmt.Sprintf("data:image/png;base64,%s", base64.StdEncoding.EncodeToString(orig))
 		} else if orig == nil {
 			user.AvatarFile = ""
 		}
@@ -424,12 +423,12 @@ func joinRoomHandler(c echo.Context) (err error) {
 		}
 
 		// Generate indicator GIF
-		indicator, err := user.GetIndicator(c.Request().Context(), fnew, room)
+		indicator, original, err := user.GetIndicator(c.Request().Context(), fnew, room)
 		if err != nil {
 			c.Logger().Error(err)
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
-		resp.Original = fmt.Sprintf("data:%s;base64,%s", mimetype.Detect(fnew), base64.StdEncoding.EncodeToString(fnew))
+		resp.Original = fmt.Sprintf("data:image/png;base64,%s", base64.StdEncoding.EncodeToString(original))
 		resp.Indicator = fmt.Sprintf("data:image/gif;base64,%s", base64.StdEncoding.EncodeToString(indicator))
 	} else if err != nil {
 		c.Logger().Error(err)
