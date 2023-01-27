@@ -187,7 +187,7 @@ func createIndexes(ctx context.Context) error {
 		return err
 	}
 
-	if len(userIndexes) < 4 {
+	if len(userIndexes) < 3 {
 		_, err := userColl.Indexes().CreateMany(ctx, []mongo.IndexModel{
 			{
 				Keys:    bson.D{{Key: "audon_id", Value: 1}},
