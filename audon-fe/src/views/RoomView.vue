@@ -42,8 +42,8 @@ const publishOpts = {
 };
 
 const captureOpts = {
-  autoGainControl: true,
-  echoCancellation: true,
+  // autoGainControl: true,
+  // echoCancellation: true,
 };
 
 export default {
