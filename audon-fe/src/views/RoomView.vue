@@ -562,7 +562,7 @@ export default {
         const resp = await axios.get(`/app/user/${identity}`);
         const account = this.roomInfo.accounts[identity];
         const info = {
-          acct: account.acct,
+          username: account.username,
           displayName: account.displayName,
           avatar: account.avatar,
           url: account.url,

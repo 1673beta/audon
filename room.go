@@ -103,7 +103,7 @@ func createRoomHandler(c echo.Context) error {
 
 	// if cohosts are already registered, retrieve their data from DB
 	for i, cohost := range room.CoHosts {
-		cohostUser, err := findUserByRemote(c.Request().Context(), cohost.RemoteID, cohost.RemoteURL)
+		cohostUser, err := findUserByWebfinger(c.Request().Context(), cohost.Webfinger)
 		if err == nil {
 			room.CoHosts[i] = cohostUser
 		}

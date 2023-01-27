@@ -176,8 +176,7 @@ export default {
         title: this.title,
         description: this.description,
         cohosts: map(this.cohosts, (u) => ({
-          remote_id: u.id,
-          remote_url: u.url,
+          webfinger: webfinger(u),
         })),
         restriction: this.relationship,
         advertise:
@@ -333,7 +332,7 @@ export default {
                   <v-list lines="two">
                     <v-list-item
                       :key="0"
-                      :value="searchResult.acct"
+                      :value="webfinger(searchResult)"
                       :title="searchResult.displayName"
                       @click="onResultClick"
                     >

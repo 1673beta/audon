@@ -105,7 +105,7 @@ func (a *AudonUser) Equal(u *AudonUser) bool {
 		return false
 	}
 
-	return a.AudonID == u.AudonID || (a.RemoteID == u.RemoteID && a.RemoteURL == u.RemoteURL)
+	return a.AudonID == u.AudonID || a.Webfinger == u.Webfinger
 }
 
 func (a *AudonUser) InLivekit(ctx context.Context) (bool, error) {

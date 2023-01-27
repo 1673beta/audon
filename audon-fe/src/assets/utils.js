@@ -10,7 +10,7 @@ export const validators = {
 export function webfinger(user) {
   if (!user) return "";
   const url = new URL(user.url);
-  const finger = user.acct.split("@");
+  const finger = user.username.split("@");
   return `${finger[0]}@${url.host}`;
 }
 

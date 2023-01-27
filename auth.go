@@ -138,7 +138,10 @@ func oauthHandler(c echo.Context) (err error) {
 	}
 
 	coll := mainDB.Collection(COLLECTION_USER)
-	if result, dbErr := findUserByRemote(c.Request().Context(), string(acc.ID), acc.URL); dbErr == mongo.ErrNoDocuments {
+	acctUrl, _ := url.Parse(acc.URL)
+	finger := strings.Split(acc.Username, "@")
+	webfinger := fmt.Sprintf("%s@%s", finger[0], acctUrl.Host)
+	if result, dbErr := findUserByWebfinger(c.Request().Context(), webfinger); dbErr == mongo.ErrNoDocuments {
 		entropy := ulid.Monotonic(rand.Reader, 0)
 		id, err := ulid.New(ulid.Timestamp(time.Now().UTC()), entropy)
 		if err != nil {
@@ -146,13 +149,11 @@ func oauthHandler(c echo.Context) (err error) {
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 		data.AudonID = id.String()
-		acctUrl, _ := url.Parse(acc.URL)
-		finger := strings.Split(acc.Username, "@")
 		newUser := AudonUser{
 			AudonID:   data.AudonID,
 			RemoteID:  string(acc.ID),
 			RemoteURL: acc.URL,
-			Webfinger: fmt.Sprintf("%s@%s", finger[0], acctUrl.Host),
+			Webfinger: webfinger,
 			CreatedAt: time.Now().UTC(),
 		}
 		if _, insertErr := coll.InsertOne(c.Request().Context(), newUser); insertErr != nil {
