@@ -81,7 +81,7 @@ func livekitWebhookHandler(c echo.Context) error {
 				}
 				nextUser, err := findUserByID(ctx, audonID)
 				if err == nil && nextUser.AvatarFile != "" {
-					log.Printf("restoring avatar: %s\n", audonID)
+					log.Printf("Recovering avatar: %s --> (%s) %s\n", nextUser.AvatarFile, audonID, nextUser.Webfinger)
 					if err != nil {
 						log.Println(err)
 						return
