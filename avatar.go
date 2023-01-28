@@ -140,30 +140,25 @@ func (u *AudonUser) createGIF(avatar image.Image, blue bool) ([]byte, error) {
 		}
 	}
 
-	outBuf, _ := os.Create(u.GetWebPAvatarPath())
+	outBuf, _ := os.Create(u.getWebPAvatarPath())
 	defer outBuf.Close()
 	anim.Encode(outBuf)
 
 	imagick.Initialize()
 	defer imagick.Terminate()
 
-	if _, err := imagick.ConvertImageCommand([]string{"convert", u.GetWebPAvatarPath(), u.GetGIFAvatarPath()}); err != nil {
+	if _, err := imagick.ConvertImageCommand([]string{"convert", u.getWebPAvatarPath(), u.getGIFAvatarPath()}); err != nil {
 		return nil, err
 	}
 
-	return os.ReadFile(u.GetGIFAvatarPath())
+	return os.ReadFile(u.getGIFAvatarPath())
 }
 
-func (u *AudonUser) getOriginalAvatarPath(hash [sha256.Size]byte, mtype *mimetype.MIME) string {
-	filename := fmt.Sprintf("%x%s", hash, mtype.Extension())
-	return u.getAvatarImagePath(filename)
-}
-
-func (u *AudonUser) GetGIFAvatarPath() string {
+func (u *AudonUser) getGIFAvatarPath() string {
 	return u.getAvatarImagePath("indicator.gif")
 }
 
-func (u *AudonUser) GetWebPAvatarPath() string {
+func (u *AudonUser) getWebPAvatarPath() string {
 	return u.getAvatarImagePath("indicator.webp")
 }
 

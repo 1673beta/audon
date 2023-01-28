@@ -20,6 +20,8 @@ import {
   mdiDotsVertical,
   mdiPencil,
   mdiEmoticon,
+  mdiCloseBoxOutline,
+  mdiExitRun,
 } from "@mdi/js";
 import {
   Room,
@@ -37,16 +39,6 @@ import boopSound from "../assets/boop.oga";
 import messageSound from "../assets/message.oga";
 import requestSound from "../assets/request.oga";
 
-const publishOpts = {
-  audioBitrate: AudioPresets.music,
-};
-
-const captureOpts = {
-  autoGainControl: true,
-  noiseSuppression: true,
-  // echoCancellation: true,
-};
-
 export default {
   setup() {
     const noSleep = new NoSleep();
@@ -62,6 +54,7 @@ export default {
       webfinger,
       clone,
       noSleep,
+      mdiCloseBoxOutline,
       mdiLogout,
       mdiAccountVoice,
       mdiMicrophone,
@@ -73,6 +66,7 @@ export default {
       mdiDotsVertical,
       mdiPencil,
       mdiEmoticon,
+      mdiExitRun,
       v$: useVuelidate(),
       donStore: useMastodonStore(),
       decoder: new TextDecoder(),
@@ -119,7 +113,22 @@ export default {
     return {
       roomID: this.$route.params.id,
       loading: false,
-      mainHeight: 700,
+      mainHeight: window.innerHeight - 120,
+      audioOptions: {
+        play: {
+          deviceId: 0,
+        },
+        capture: {
+          autoGainControl: false,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+        publish: {
+          audioBitrate: AudioPresets.music,
+          forceStereo: false,
+          source: Track.Source.Microphone,
+        },
+      },
       roomInfo: {
         title: this.$t("connecting"),
         description: "",
@@ -162,7 +171,6 @@ export default {
   },
   async created() {
     this.onResize();
-    // fetch mastodon token
     if (!this.donStore.client || !this.donStore.authorized) {
       try {
         await this.donStore.fetchToken();
@@ -225,10 +233,10 @@ export default {
       return this.isHost(myAudonID);
     },
     iamCohost() {
-      const myInfo = this.donStore.userinfo;
+      const myInfo = this.donStore.oauth.audon;
       if (!myInfo) return false;
 
-      return this.isCohost({ remote_id: myInfo.id, remote_url: myInfo.url });
+      return this.isCohost(myInfo);
     },
     iamSpeaker() {
       const myAudonID = this.donStore.oauth.audon?.audon_id;
@@ -250,6 +258,14 @@ export default {
       const messages = map(errors, (e) => e.$message);
       return messages;
     },
+    isLastHost() {
+      return !some(
+        Object.values(this.participants),
+        (v) =>
+          v.audon_id !== this.donStore.oauth.audon?.audon_id &&
+          (this.isHost(v.audon_id) || this.isCohost(v))
+      );
+    },
   },
   methods: {
     refreshTimeElapsed() {
@@ -266,6 +282,7 @@ export default {
       try {
         this.loading = true;
         await this.connectLivekit(token);
+        await this.roomClient.startAudio();
       } catch (error) {
         alert(this.$t("errors.connectionFailed"));
       } finally {
@@ -378,7 +395,11 @@ export default {
           }
           if (self.iamSpeaker && !self.micGranted) {
             self.roomClient.localParticipant
-              .setMicrophoneEnabled(true, captureOpts, publishOpts)
+              .setMicrophoneEnabled(
+                true,
+                self.audioOptions.capture,
+                self.audioOptions.publish
+              )
               .then(() => {
                 self.micGranted = true;
               })
@@ -408,8 +429,8 @@ export default {
         try {
           await this.roomClient.localParticipant.setMicrophoneEnabled(
             true,
-            captureOpts,
-            publishOpts
+            this.audioOptions.capture,
+            this.audioOptions.publish
           );
         } catch {
           alert(this.$t("microphoneBlocked"));
@@ -429,19 +450,16 @@ export default {
       }
     },
     onResize() {
-      const mainArea = document.getElementById("mainArea");
-      const height = mainArea.clientHeight;
-      this.mainHeight = height > 720 ? 700 : window.innerHeight - 120;
+      this.mainHeight = window.innerHeight - 120;
     },
     isHost(identity) {
       return identity === this.roomInfo.host?.audon_id;
     },
-    isCohost(metadata) {
+    isCohost(data) {
       return (
-        metadata &&
+        data.webfinger &&
         some(this.roomInfo.cohosts, {
-          remote_id: metadata.remote_id,
-          remote_url: metadata.remote_url,
+          webfinger: data.webfinger,
         })
       );
     },
@@ -589,15 +607,15 @@ export default {
             newMicStatus = true;
             await this.roomClient.localParticipant.setMicrophoneEnabled(
               newMicStatus,
-              captureOpts,
-              publishOpts
+              this.audioOptions.capture,
+              this.audioOptions.publish
             );
           } else if (myTrack) {
             newMicStatus = myTrack.isMuted;
             await this.roomClient.localParticipant.setMicrophoneEnabled(
               newMicStatus,
-              captureOpts,
-              publishOpts
+              this.audioOptions.capture,
+              this.audioOptions.publish
             );
           }
           if (newMicStatus) {
@@ -718,7 +736,7 @@ export default {
     @connect.once="joinRoom"
   ></JoinDialog>
   <v-dialog v-model="showRequestDialog" max-width="500">
-    <v-card max-height="600" class="d-flex flex-column">
+    <v-card class="d-flex flex-column">
       <v-card-title>{{ $t("speakRequest.label") }}</v-card-title>
       <v-card-text class="flex-grow-1 overflow-auto py-0">
         <v-list v-if="speakRequests.size > 0" lines="two" variant="tonal">
@@ -906,14 +924,32 @@ export default {
           variant="flat"
           @click="onToggleMute"
         ></v-btn>
-        <v-btn
-          v-if="iamHost"
-          :icon="mdiLogout"
-          color="red"
-          :disabled="loading"
-          @click="onRoomClose"
-          variant="flat"
-        ></v-btn>
+        <v-menu v-if="iamHost || iamCohost">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              :icon="mdiLogout"
+              color="red"
+              :disabled="loading"
+              variant="flat"
+              v-bind="props"
+            ></v-btn>
+          </template>
+          <v-list>
+            <v-list-item
+              :title="$t('closeRoom')"
+              :prepend-icon="mdiCloseBoxOutline"
+              @click="onRoomClose"
+              class="text-red"
+            ></v-list-item>
+            <v-list-item
+              :disabled="isLastHost"
+              :title="$t('leaveRoom')"
+              :prepend-icon="mdiExitRun"
+              @click="onLeave"
+            >
+            </v-list-item>
+          </v-list>
+        </v-menu>
         <v-btn
           v-else
           :icon="mdiLogout"
@@ -943,5 +979,3 @@ export default {
     </v-card>
   </main>
 </template>
-
-<style scoped></style>

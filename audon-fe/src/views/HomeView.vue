@@ -83,7 +83,11 @@ export default {
       </v-col>
     </v-row>
     <div class="d-flex justify-center mt-6">
-      <v-alert :icon="mdiLinkVariant" :title="$t('staticLink.title')">
+      <v-alert
+        :icon="mdiLinkVariant"
+        :title="$t('staticLink.title')"
+        variant="tonal"
+      >
         <div class="my-1">
           <h4 style="word-break: break-all">
             <a

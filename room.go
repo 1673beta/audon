@@ -450,9 +450,9 @@ func closeRoomHandler(c echo.Context) error {
 		return ErrAlreadyEnded
 	}
 
-	// only host can close the room
+	// only host or cohost can close the room
 	user := c.Get("user").(*AudonUser)
-	if !room.IsHost(user) {
+	if !room.IsHost(user) && !room.IsCoHost(user) {
 		return ErrOperationNotPermitted
 	}
 

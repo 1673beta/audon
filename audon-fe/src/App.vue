@@ -48,7 +48,7 @@ export default {
           id="mainArea"
         >
           <v-col>
-            <v-responsive class="mx-auto" max-width="600px">
+            <v-responsive id="mainContainer" class="mx-auto" max-width="600px">
               <RouterView />
             </v-responsive>
           </v-col>
@@ -105,5 +105,9 @@ export default {
 #localeSelector option {
   background: black;
   color: white;
+}
+
+#mainContainer {
+  background-color: rgba(18, 18, 18, 0.8);
 }
 </style>

@@ -89,7 +89,6 @@ export default {
     async joining(indicator) {
       try {
         this.donStore.avatar = this.roomToken.original;
-        await this.roomClient.startAudio();
         if (indicator && this.uploadEnabled) {
           this.uploading = true;
           try {
