@@ -30,7 +30,7 @@ COPY --from=1 /workspace/audon-bin /audon/
 COPY locales /audon/locales
 COPY public /audon/public
 
-RUN echo "Etc/UTC" > /etc/localtime && \
+RUN echo "UTC" > /etc/localtime && \
     apt-get update && apt-get upgrade -y && \
     apt-get -y --no-install-recommends install \
     imagemagick webp \
