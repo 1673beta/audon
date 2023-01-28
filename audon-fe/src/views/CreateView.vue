@@ -117,11 +117,11 @@ export default {
   watch: {
     searchQuery(val) {
       this.isCandiadateLoading = false;
+      this.searchError.enabled = false;
       this.cohostSearch.cancel();
       if (!val) return;
       if (some(this.cohosts, { finger: val })) {
         this.searchError.message = this.$t("errors.alreadyAdded");
-        this.searchError.colour = "warning";
         this.searchError.enabled = true;
         return;
       }
@@ -138,7 +138,12 @@ export default {
   methods: {
     async search(val) {
       const finger = val.split("@");
-      if (finger.length !== 2) return;
+      if (finger.length < 2 || finger.length > 3) {
+        this.searchError.message = this.$t("errors.invalidAddress");
+        this.searchError.enabled = true;
+        this.isCandiadateLoading = false;
+        return;
+      }
       try {
         const resp = await this.donStore.client.v1.accounts.search({
           q: val,
@@ -151,7 +156,6 @@ export default {
         this.searchError.enabled = false;
       } catch (error) {
         this.searchError.message = this.$t("errors.notFound", { value: val });
-        this.searchError.colour = "error";
         this.searchError.enabled = true;
       } finally {
         this.isCandiadateLoading = false;
@@ -371,13 +375,6 @@ export default {
                 </v-text-field>
               </v-card-actions>
             </v-card>
-            <v-text-field
-              type="datetime-local"
-              v-model="scheduledAt"
-              :label="$t('form.schedule')"
-              disabled
-              :messages="[$t('comingFuture')]"
-            ></v-text-field>
             <v-checkbox
               v-model="advertise"
               :disabled="relationship !== 'everyone'"
