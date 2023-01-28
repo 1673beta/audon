@@ -22,17 +22,19 @@ import (
 	"gopkg.in/gographics/imagick.v2/imagick"
 )
 
-func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte, room *Room) ([]byte, []byte, error) {
+func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte, room *Room) (indicator []byte, original []byte, isGIF bool, err error) {
+	isGIF = false
+
 	if u == nil {
-		return nil, nil, errors.New("nil user")
+		err = errors.New("nil user")
+		return
 	}
 
 	mtype := mimetype.Detect(fnew)
 	if !mimetype.EqualsAny(mtype.String(), "image/png", "image/jpeg", "image/webp", "image/gif") {
-		return nil, nil, errors.New("file type not supported")
+		err = errors.New("file type not supported")
+		return
 	}
-
-	var err error
 
 	buf := bytes.NewReader(fnew)
 
@@ -45,29 +47,40 @@ func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte, room *Room) (
 		newImg, err = webp.Decode(buf)
 	} else if mtype.Is("image/gif") {
 		newImg, err = gif.Decode(buf)
+		isGIF = true
 	}
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
-	// encode to png to avoid recompression
-	origBuf := new(bytes.Buffer)
-	if err := png.Encode(origBuf, newImg); err != nil {
-		return nil, nil, err
+	// encode to png to avoid recompression, except GIF
+	var origImg []byte
+	if !isGIF {
+		origBuf := new(bytes.Buffer)
+		if err = png.Encode(origBuf, newImg); err != nil {
+			return
+		}
+		origImg = origBuf.Bytes()
+	} else {
+		origImg = fnew
 	}
-	origPng := origBuf.Bytes()
-	hash := sha256.Sum256(origPng)
+	hash := sha256.Sum256(origImg)
 
 	// Check if user's original avatar exists
-	filename := fmt.Sprintf("%x.png", hash)
+	var filename string
+	if isGIF {
+		filename = fmt.Sprintf("%x.gif", hash)
+	} else {
+		filename = fmt.Sprintf("%x.png", hash)
+	}
 	saved := u.getAvatarImagePath(filename)
-	if _, err := os.Stat(saved); err != nil {
-		if err := os.MkdirAll(filepath.Dir(saved), 0775); err != nil {
-			return nil, nil, err
+	if _, err = os.Stat(saved); err != nil {
+		if err = os.MkdirAll(filepath.Dir(saved), 0775); err != nil {
+			return
 		}
 		// Write user's avatar if the original version doesn't exist
-		if err := os.WriteFile(saved, origPng, 0664); err != nil {
-			return nil, nil, err
+		if err = os.WriteFile(saved, origImg, 0664); err != nil {
+			return
 		}
 	}
 
@@ -77,15 +90,15 @@ func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte, room *Room) (
 		bson.D{
 			{Key: "$set", Value: bson.D{{Key: "avatar", Value: filename}}},
 		}); err != nil {
-		return nil, nil, err
+		return
 	}
 
-	indicator, err := u.createGIF(newImg, room.IsHost(u) || room.IsCoHost(u))
+	indicator, err = u.createGIF(newImg, room.IsHost(u) || room.IsCoHost(u))
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
-	return indicator, origPng, nil
+	return indicator, origImg, isGIF, nil
 }
 
 func (u *AudonUser) createGIF(avatar image.Image, blue bool) ([]byte, error) {

@@ -423,12 +423,16 @@ func joinRoomHandler(c echo.Context) (err error) {
 		}
 
 		// Generate indicator GIF
-		indicator, original, err := user.GetIndicator(c.Request().Context(), fnew, room)
+		indicator, original, isGIF, err := user.GetIndicator(c.Request().Context(), fnew, room)
+		origMime := "image/png"
+		if isGIF {
+			origMime = "image/gif"
+		}
 		if err != nil {
 			c.Logger().Error(err)
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
-		resp.Original = fmt.Sprintf("data:image/png;base64,%s", base64.StdEncoding.EncodeToString(original))
+		resp.Original = fmt.Sprintf("data:%s;base64,%s", origMime, base64.StdEncoding.EncodeToString(original))
 		resp.Indicator = fmt.Sprintf("data:image/gif;base64,%s", base64.StdEncoding.EncodeToString(indicator))
 	} else if err != nil {
 		c.Logger().Error(err)
