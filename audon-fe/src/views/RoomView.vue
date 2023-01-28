@@ -42,7 +42,8 @@ const publishOpts = {
 };
 
 const captureOpts = {
-  // autoGainControl: true,
+  autoGainControl: true,
+  noiseSuppression: true,
   // echoCancellation: true,
 };
 
