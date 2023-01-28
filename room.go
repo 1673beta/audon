@@ -54,39 +54,6 @@ func createRoomHandler(c echo.Context) error {
 	coll := mainDB.Collection(COLLECTION_ROOM)
 
 	now := time.Now().UTC()
-	if now.After(room.ScheduledAt) {
-		// host is trying to create an instant room even though there is another instant room that wasn't used, assumed that host won't use such rooms
-		if cur, err := coll.Find(c.Request().Context(),
-			bson.D{
-				{Key: "host.audon_id", Value: host.AudonID},
-				{Key: "ended_at", Value: time.Time{}}, // host didn't close
-				{Key: "$expr", Value: bson.D{ // instant room
-					{Key: "$eq", Value: bson.A{"$created_at", "$scheduled_at"}},
-				}},
-			}); err == nil {
-			defer cur.Close(c.Request().Context())
-
-			roomIDsToBeDeleted := []string{}
-			for cur.Next(c.Request().Context()) {
-				emptyRoom := new(Room)
-				if err := cur.Decode(emptyRoom); err == nil {
-					if !emptyRoom.IsAnyomeInLivekitRoom(c.Request().Context()) {
-						roomIDsToBeDeleted = append(roomIDsToBeDeleted, emptyRoom.RoomID)
-					}
-				}
-			}
-			if len(roomIDsToBeDeleted) > 0 {
-				coll.DeleteMany(c.Request().Context(), bson.D{{
-					Key:   "room_id",
-					Value: bson.D{{Key: "$in", Value: roomIDsToBeDeleted}}},
-				})
-			}
-		}
-
-		room.ScheduledAt = now
-	} else {
-		// TODO: limit the number of rooms one can schedule?
-	}
 
 	// TODO: use a job scheduler to manage rooms?
 
@@ -284,11 +251,6 @@ func joinRoomHandler(c echo.Context) (err error) {
 	}
 
 	now := time.Now().UTC()
-
-	// check if room is not yet started
-	if room.ScheduledAt.After(now) {
-		return echo.NewHTTPError(http.StatusConflict, "not_yet_started")
-	}
 
 	// check if room has already ended
 	if !room.EndedAt.IsZero() && room.EndedAt.Before(now) {

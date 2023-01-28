@@ -60,7 +60,6 @@ export default {
         { title: this.$t("form.relationships.mutual"), value: "mutual" },
         { title: this.$t("form.relationships.private"), value: "private" },
       ],
-      scheduledAt: null,
       searchResult: null,
       searchQuery: "",
       isCandiadateLoading: false,
@@ -193,7 +192,6 @@ export default {
         const resp = await axios.post("/api/room", payload);
         if (resp.status === 201) {
           this.createdRoomID = resp.data;
-          // this.$router.push({ name: "room", params: { id: resp.data } });
         }
       } catch (error) {
         this.searchError.message = `Error: ${error}`;

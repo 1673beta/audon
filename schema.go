@@ -42,7 +42,6 @@ type (
 		CoHosts     []*AudonUser    `bson:"cohosts" json:"cohosts"`
 		Restriction JoinRestriction `bson:"restriction" json:"restriction"`
 		Kicked      []*AudonUser    `bson:"kicked" json:"kicked"`
-		ScheduledAt time.Time       `bson:"scheduled_at" json:"scheduled_at"`
 		EndedAt     time.Time       `bson:"ended_at" json:"ended_at"`
 		CreatedAt   time.Time       `bson:"created_at" json:"created_at"`
 		Advertise   string          `bson:"advertise" json:"advertise"`
