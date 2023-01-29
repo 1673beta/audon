@@ -83,6 +83,7 @@ func redirectUserHandler(c echo.Context) error {
 	opts := options.FindOne().SetSort(bson.D{{Key: "created_at", Value: -1}})
 	var room Room
 
+	searchCohost := false
 	if err := coll.FindOne(c.Request().Context(), bson.D{
 		{Key: "host.audon_id", Value: user.AudonID},
 	}, opts).Decode(&room); err == nil {
@@ -90,16 +91,21 @@ func redirectUserHandler(c echo.Context) error {
 			// redirect to the hosting room if online
 			return c.Redirect(http.StatusFound, fmt.Sprintf("/r/%s", room.RoomID))
 		} else {
-			// redirect to the first cohosting room if online
-			status, err := user.GetCurrentRoomStatus(c.Request().Context())
-			if err != nil {
-				c.Logger().Error(err)
-				return echo.NewHTTPError(http.StatusInternalServerError)
-			}
-			for _, v := range status {
-				if v.Role == "cohost" {
-					return c.Redirect(http.StatusFound, fmt.Sprintf("/r/%s", v.RoomID))
-				}
+			searchCohost = true
+		}
+	} else {
+		searchCohost = true
+	}
+	if searchCohost {
+		// redirect to the first cohosting room if online
+		status, err := user.GetCurrentRoomStatus(c.Request().Context())
+		if err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+		for _, v := range status {
+			if v.Role == "cohost" {
+				return c.Redirect(http.StatusFound, fmt.Sprintf("/r/%s", v.RoomID))
 			}
 		}
 	}
