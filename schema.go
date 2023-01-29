@@ -31,6 +31,7 @@ type (
 	RoomMetadata struct {
 		*Room
 		Speakers         []*AudonUser                `json:"speakers"`
+		Kicked           []*AudonUser                `json:"kicked"`
 		MastodonAccounts map[string]*MastodonAccount `json:"accounts"`
 	}
 
@@ -41,7 +42,6 @@ type (
 		Host        *AudonUser      `bson:"host" json:"host"`
 		CoHosts     []*AudonUser    `bson:"cohosts" json:"cohosts"`
 		Restriction JoinRestriction `bson:"restriction" json:"restriction"`
-		Kicked      []*AudonUser    `bson:"kicked" json:"kicked"`
 		EndedAt     time.Time       `bson:"ended_at" json:"ended_at"`
 		CreatedAt   time.Time       `bson:"created_at" json:"created_at"`
 		Advertise   string          `bson:"advertise" json:"advertise"`
@@ -89,6 +89,11 @@ func (a *AudonUser) GetCurrentLivekitRooms(ctx context.Context) ([]*livekit.Room
 				current = append(current, r)
 				break
 			}
+		}
+		// check host
+		room, _ := getRoomMetadataFromLivekitRoom(r)
+		if room.IsHost(a) {
+			current = append(current, r)
 		}
 	}
 	return current, nil
@@ -148,6 +153,18 @@ func getRoomMetadataFromLivekitRoom(lkRoom *livekit.Room) (*RoomMetadata, error)
 	}
 
 	return metadata, nil
+}
+
+func (r *Room) getRoomMetadata(ctx context.Context) *RoomMetadata {
+	lkRoom, _ := getRoomInLivekit(ctx, r.RoomID)
+	if lkRoom == nil {
+		return nil
+	}
+	meta, err := getRoomMetadataFromLivekitRoom(lkRoom)
+	if err != nil {
+		return nil
+	}
+	return meta
 }
 
 func (r *Room) ExistsInLivekit(ctx context.Context) bool {

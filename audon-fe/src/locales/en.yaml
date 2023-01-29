@@ -25,6 +25,7 @@ editRoom: "Room Edit"
 comingFuture: "Coming with future update!"
 processing: "Processing now...<br />Keep this window open!"
 lostWarning: "Unsaved data will be lost if you leave the page, are you sure?"
+cannotUndone: "This process cannot be undone. Are you sure?"
 staticLink:
   title: "Your Audon Link"
   hint: "Other participants can join to your room via this personal link while you're hosting."
@@ -33,8 +34,8 @@ form:
   titleRequired: "Room title required"
   description: "Description"
   restriction: "Who can join"
-  cohosts: "Cohosts"
-  cohostCanAlwaysJoin: "Cohosts can join regardless of this setting."
+  cohosts: "CoHosts"
+  cohostCanAlwaysJoin: "CoHosts can join regardless of this setting."
   schedule: "Schedule at"
   advertise: "Allow the bot ({bot}) to advertise your room"
   relationships:
@@ -43,7 +44,7 @@ form:
     follower: "Followers-only"
     knowing: "Followed accounts and/or followers"
     mutual: "Your mutuals"
-    private: "Cohosts only"
+    private: "CoHosts only"
 shareRoomMessage: "Join my Audon room!\n{link}\n\nTitle: {title}"
 roomReady:
   header: "Your room is ready!"
@@ -82,6 +83,15 @@ speakRequest:
 microphoneBlocked: "Your browser has blocked access to the microphone. Check permission settings of your device and browser."
 closeRoomConfirm: "Are you sure you want to close this room?"
 roomEvent:
-  closedByHost: "Host has closed this room."
+  closedByHost: "This room has been closed."
   removed: "You have been requested to leave."
   disconnected: "Disconnected from this room."
+moderation:
+  promote: "Promote to {role}"
+  demote: "Demote to listener"
+  kick: "Kick out"
+role:
+  host: "Host"
+  cohost: "CoHost"
+  speaker: "Speaker"
+  listener: "Listener"

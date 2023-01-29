@@ -18,6 +18,7 @@ export default {
     muted: Boolean,
     emoji: String,
     preview: Boolean,
+    enableMenu: Boolean,
   },
   computed: {
     showEmoji() {
@@ -34,17 +35,17 @@ export default {
       switch (this.type) {
         case "host":
           return {
-            content: "Host",
+            content: this.$t("role.host"),
             colour: "deep-orange",
           };
         case "cohost":
           return {
-            content: "Cohost",
+            content: this.$t("role.cohost"),
             colour: "indigo",
           };
         case "speaker":
           return {
-            content: "Speaker",
+            content: this.$t("role.speaker"),
             colour: "",
           };
         default:
@@ -78,7 +79,11 @@ export default {
         >
           <span>{{ emoji }}</span>
         </v-overlay>
-        <v-img :src="data?.avatar"></v-img>
+        <v-img
+          :class="{ cursorPointer: enableMenu }"
+          :id="`mod-${data?.identity}`"
+          :src="data?.avatar"
+        ></v-img>
       </v-avatar>
     </v-badge>
     <v-avatar
@@ -97,8 +102,34 @@ export default {
       >
         <span>{{ emoji }}</span>
       </v-overlay>
-      <v-img :src="data?.avatar"></v-img>
+      <v-img
+        :class="{ cursorPointer: enableMenu }"
+        :id="`mod-${data?.identity}`"
+        :src="data?.avatar"
+      ></v-img>
     </v-avatar>
+    <v-menu v-if="enableMenu" :activator="`#mod-${data?.identity}`">
+      <v-list>
+        <v-list-item
+          :title="$t('moderation.promote', { role: $t('role.cohost') })"
+          @click="$emit('moderate', this.data?.identity, 'cohost')"
+        ></v-list-item>
+        <v-list-item
+          v-if="type !== 'speaker'"
+          :title="$t('moderation.promote', { role: $t('role.speaker') })"
+          @click="$emit('moderate', this.data?.identity, 'speaker')"
+        ></v-list-item>
+        <v-list-item
+          v-else
+          :title="$t('moderation.demote')"
+          @click="$emit('moderate', this.data?.identity, 'demote')"
+        ></v-list-item>
+        <v-list-item
+          :title="$t('moderation.kick')"
+          @click="$emit('moderate', this.data?.identity, 'kick')"
+        ></v-list-item>
+      </v-list>
+    </v-menu>
     <h4 :class="canSpeak ? 'mt-1' : 'mt-2'">
       <v-icon
         v-if="canSpeak && !preview"
@@ -120,5 +151,9 @@ export default {
   font-size: 2rem;
   color: white;
   text-align: center;
+}
+
+.cursorPointer {
+  cursor: pointer;
 }
 </style>

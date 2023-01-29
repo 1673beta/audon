@@ -2,7 +2,7 @@
 import axios from "axios";
 import { pushNotFound, webfinger } from "../assets/utils";
 import { useMastodonStore } from "../stores/mastodon";
-import { map, some, omit, filter, trim, clone } from "lodash-es";
+import { map, some, omit, filter, trim, clone, differenceBy } from "lodash-es";
 import { darkTheme } from "picmo";
 import { createPopup } from "@picmo/popup-picker";
 import { Howl } from "howler";
@@ -126,7 +126,6 @@ export default {
         publish: {
           audioBitrate: AudioPresets.music,
           forceStereo: false,
-          source: Track.Source.Microphone,
         },
       },
       roomInfo: {
@@ -163,6 +162,7 @@ export default {
       showRequestDialog: false,
       showRequestedNotification: false,
       isEditLoading: false,
+      isRequestLoading: false,
       closeLoading: false,
       showEditDialog: false,
       timeElapsed: "",
@@ -245,7 +245,10 @@ export default {
       return this.isSpeaker(myAudonID);
     },
     micStatusIcon() {
-      if (!this.micGranted) {
+      if (
+        !this.micGranted ||
+        !(this.iamHost || this.iamCohost || this.iamSpeaker)
+      ) {
         return mdiMicrophoneQuestion;
       }
       if (this.iamMuted) {
@@ -385,15 +388,39 @@ export default {
           }
         })
         .on(RoomEvent.RoomMetadataChanged, (metadata) => {
-          self.roomInfo = JSON.parse(metadata);
+          const newRoominfo = JSON.parse(metadata);
+          const myAudonID = self.donStore.oauth.audon.audon_id;
+          const iamNewCohost = some(
+            differenceBy(
+              newRoominfo.cohosts,
+              self.roomInfo.cohosts,
+              "audon_id"
+            ),
+            (v) => v.audon_id === myAudonID
+          );
+          if (iamNewCohost) {
+            self.closeLoading = true;
+            self.roomClient.disconnect();
+            self.donStore.revertAvatar().finally(() => {
+              window.location.reload();
+            });
+          }
+          const iamNewSpeaker = some(
+            differenceBy(
+              newRoominfo.speakers,
+              self.roomInfo.speakers,
+              "audon_id"
+            ),
+            (v) => v.audon_id === myAudonID
+          );
+          self.roomInfo = newRoominfo;
           self.editingRoomInfo = clone(self.roomInfo);
-          if (!self.roomInfo.speakers) return;
           for (const speakers of self.roomInfo.speakers) {
             self.speakRequests.delete(speakers.audon_id);
             if (self.speakRequests.size < 1)
               self.showRequestNotification = false;
           }
-          if (self.iamSpeaker && !self.micGranted) {
+          if (self.iamSpeaker && iamNewSpeaker) {
             self.roomClient.localParticipant
               .setMicrophoneEnabled(
                 true,
@@ -405,6 +432,7 @@ export default {
               })
               .finally(() => {
                 self.roomClient.localParticipant.setMicrophoneEnabled(false);
+                self.mutedSpeakerIDs.add(myAudonID);
               });
           }
         });
@@ -480,13 +508,19 @@ export default {
         this.sounds.request.play();
       }
     },
-    async onAcceptRequest(identity) {
-      // promote user to a speaker
-      // the livekit server will update room metadata
+    async onModerate(identity, op) {
+      if (!identity) return;
+      if (op === "kick" || op === "cohost") {
+        if (!confirm(this.$t("cannotUndone"))) {
+          return;
+        }
+      }
+      this.isRequestLoading = true;
       try {
-        await axios.put(`/api/room/${this.roomID}/${identity}`);
-      } catch (reqError) {
-        console.log("permission update request error: ", reqError);
+        await axios.put(`/api/room/${this.roomID}`, { identity, op });
+      } finally {
+        this.isRequestLoading = false;
+        this.speakRequests.delete(identity);
       }
     },
     async onDeclineRequest(identity) {
@@ -585,6 +619,7 @@ export default {
           displayName: account.displayName,
           avatar: account.avatar,
           url: account.url,
+          identity,
         };
         if (resp.data.avatar) {
           info.avatar = `/storage/${resp.data.audon_id}/avatar/${resp.data.avatar}`;
@@ -736,7 +771,7 @@ export default {
     @connect.once="joinRoom"
   ></JoinDialog>
   <v-dialog v-model="showRequestDialog" max-width="500">
-    <v-card class="d-flex flex-column">
+    <v-card :loading="isRequestLoading" class="d-flex flex-column">
       <v-card-title>{{ $t("speakRequest.label") }}</v-card-title>
       <v-card-text class="flex-grow-1 overflow-auto py-0">
         <v-list v-if="speakRequests.size > 0" lines="two" variant="tonal">
@@ -758,12 +793,14 @@ export default {
                 size="small"
                 variant="text"
                 :icon="mdiCheck"
-                @click="onAcceptRequest(id)"
+                :disabled="isRequestLoading"
+                @click.once="onModerate(id, 'speaker')"
               ></v-btn>
               <v-btn
                 size="small"
                 variant="text"
                 :icon="mdiClose"
+                :disabled="isRequestLoading"
                 @click="onDeclineRequest(id)"
               ></v-btn>
             </template>
@@ -884,6 +921,8 @@ export default {
               :data="cachedMastoData[key]"
               :muted="mutedSpeakerIDs.has(key)"
               :emoji="emojiReactions[key]?.emoji"
+              @moderate="onModerate"
+              :enable-menu="iamHost || iamCohost"
             >
             </Participant>
           </template>
@@ -895,6 +934,8 @@ export default {
               :data="cachedMastoData[key]"
               type="listener"
               :emoji="emojiReactions[key]?.emoji"
+              @moderate="onModerate"
+              :enable-menu="iamHost || iamCohost"
             ></Participant>
           </template>
         </v-row>

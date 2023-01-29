@@ -25,6 +25,7 @@ editRoom: "部屋の編集"
 comingFuture: "今後のアップデートで追加予定"
 processing: "処理中です。<br />画面を閉じないでください。"
 lostWarning: "この画面を閉じると保存前の内容が失われます。構いませんか？"
+cannotUndone: "この操作は取り消せません。続行しますか？"
 staticLink:
   title: "Audon リンク"
   hint: "あなたが部屋をホストしたとき、他の人はこの固定 URL からでも参加できます。"
@@ -82,6 +83,15 @@ speakRequest:
 microphoneBlocked: "マイクが禁止されています。ブラウザやデバイスの設定からマイクの使用を許可してください。"
 closeRoomConfirm: "この部屋を閉じますか？"
 roomEvent:
-  closedByHost: "ホストにより部屋が閉じられました。"
+  closedByHost: "部屋が閉じられました。"
   removed: "リクエストにより部屋から退去しました。"
   disconneced: "切断されました。"
+moderation:
+  promote: "{role} にする"
+  demote: "リスナー に戻す"
+  kick: "追い出す"
+role:
+  host: "ホスト"
+  cohost: "共同ホスト"
+  speaker: "スピーカー"
+  listener: "リスナー"

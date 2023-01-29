@@ -34,7 +34,7 @@ func createRoomHandler(c echo.Context) error {
 	host := c.Get("user").(*AudonUser)
 	room.Host = host
 
-	// check if user is already hosting
+	// check if user is already hosting or cohosting
 	lkRooms, err := host.GetCurrentLivekitRooms(c.Request().Context())
 	if err != nil {
 		c.Logger().Error(err)
@@ -46,7 +46,7 @@ func createRoomHandler(c echo.Context) error {
 			c.Logger().Error(err)
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
-		if meta.Host.Equal(host) {
+		if meta.IsHost(host) || meta.IsCoHost(host) {
 			return ErrOperationNotPermitted
 		}
 	}
@@ -81,7 +81,7 @@ func createRoomHandler(c echo.Context) error {
 	}
 
 	// Create livekit room
-	roomMetadata := &RoomMetadata{Room: room, MastodonAccounts: make(map[string]*MastodonAccount)}
+	roomMetadata := &RoomMetadata{Room: room, Speakers: []*AudonUser{}, Kicked: []*AudonUser{}, MastodonAccounts: make(map[string]*MastodonAccount)}
 	metadata, _ := json.Marshal(roomMetadata)
 	_, err = lkRoomServiceClient.CreateRoom(c.Request().Context(), &livekit.CreateRoomRequest{
 		Name:     room.RoomID,
@@ -257,12 +257,13 @@ func joinRoomHandler(c echo.Context) (err error) {
 		return ErrAlreadyEnded
 	}
 
-	// return 403 if one has been kicked
-	for _, kicked := range room.Kicked {
-		if kicked.Equal(user) {
-			return echo.NewHTTPError(http.StatusForbidden)
-		}
+	lkRoom, _ := getRoomInLivekit(c.Request().Context(), room.RoomID) // lkRoom will be nil if it doesn't exist
+	if lkRoom == nil {
+		return ErrRoomNotFound
 	}
+
+	roomMetadata, _ := getRoomMetadataFromLivekitRoom(lkRoom)
+	room = roomMetadata.Room
 
 	canTalk := room.IsHost(user) || room.IsCoHost(user) // host and cohost can talk from the beginning
 
@@ -301,19 +302,18 @@ func joinRoomHandler(c echo.Context) (err error) {
 		}
 	}
 
-	roomMetadata := &RoomMetadata{Room: room, MastodonAccounts: make(map[string]*MastodonAccount)}
+	// return 403 if one has been kicked
+	for _, kicked := range roomMetadata.Kicked {
+		if kicked.Equal(user) {
+			return echo.NewHTTPError(http.StatusForbidden)
+		}
+	}
 
 	// Allows the user to talk if the user is a speaker
-	lkRoom, _ := getRoomInLivekit(c.Request().Context(), room.RoomID) // lkRoom will be nil if it doesn't exist
-	if lkRoom != nil {
-		if existingMetadata, _ := getRoomMetadataFromLivekitRoom(lkRoom); existingMetadata != nil {
-			roomMetadata = existingMetadata
-			for _, speaker := range existingMetadata.Speakers {
-				if speaker.AudonID == user.AudonID {
-					canTalk = true
-					break
-				}
-			}
+	for _, speaker := range roomMetadata.Speakers {
+		if speaker.AudonID == user.AudonID {
+			canTalk = true
+			break
 		}
 	}
 
@@ -401,13 +401,8 @@ func joinRoomHandler(c echo.Context) (err error) {
 	}
 
 	// Update room metadata
-	currentMeta, err := getRoomMetadataFromLivekitRoom(lkRoom)
-	if err != nil {
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError)
-	}
-	currentMeta.MastodonAccounts[user.AudonID] = mastoAccount
-	newMetadata, err := json.Marshal(currentMeta)
+	roomMetadata.MastodonAccounts[user.AudonID] = mastoAccount
+	newMetadata, err := json.Marshal(roomMetadata)
 	if err != nil {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
@@ -429,7 +424,7 @@ func joinRoomHandler(c echo.Context) (err error) {
 	return c.JSON(http.StatusOK, resp)
 }
 
-// intended to be called by room's host
+// intended to be called by room's host or cohost
 func closeRoomHandler(c echo.Context) error {
 	roomID := c.Param("id")
 	if err := mainValidator.Var(&roomID, "required,printascii"); err != nil {
@@ -444,15 +439,19 @@ func closeRoomHandler(c echo.Context) error {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-
 	// return 410 if the room has already ended
 	if !room.EndedAt.IsZero() {
 		return ErrAlreadyEnded
 	}
 
+	meta := room.getRoomMetadata(c.Request().Context())
+	if meta == nil {
+		return ErrRoomNotFound
+	}
+
 	// only host or cohost can close the room
 	user := c.Get("user").(*AudonUser)
-	if !room.IsHost(user) && !room.IsCoHost(user) {
+	if !meta.IsHost(user) && !meta.IsCoHost(user) {
 		return ErrOperationNotPermitted
 	}
 
@@ -481,8 +480,8 @@ func leaveRoomHandler(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func updatePermissionHandler(c echo.Context) error {
-	roomID := c.Param("room")
+func updateRoleHandler(c echo.Context) error {
+	roomID := c.Param("id")
 
 	// look up lkRoom in livekit
 	lkRoom, exists := getRoomInLivekit(c.Request().Context(), roomID)
@@ -502,7 +501,12 @@ func updatePermissionHandler(c echo.Context) error {
 		return ErrOperationNotPermitted
 	}
 
-	audonID := c.Param("user")
+	params := make(map[string]string)
+	if err := c.Bind(&params); err != nil {
+		return ErrInvalidRequestFormat
+	}
+	audonID := params["identity"]
+	operation := params["op"]
 	if !lkRoomMetadata.IsUserInLivekitRoom(c.Request().Context(), audonID) {
 		return ErrUserNotFound
 	}
@@ -517,17 +521,48 @@ func updatePermissionHandler(c echo.Context) error {
 	newPermission := &livekit.ParticipantPermission{
 		CanPublishData: true,
 		CanSubscribe:   true,
+		CanPublish:     true,
 	}
 
-	// promote user to a speaker
-	if c.Request().Method == http.MethodPut {
-		newPermission.CanPublish = true
+	if operation == "speaker" {
 		for _, speaker := range lkRoomMetadata.Speakers {
 			if speaker.Equal(tgtUser) {
 				return echo.NewHTTPError(http.StatusConflict, "already_speaking")
 			}
 		}
 		lkRoomMetadata.Speakers = append(lkRoomMetadata.Speakers, tgtUser)
+	} else if operation == "cohost" {
+		lkRoomMetadata.CoHosts = append(lkRoomMetadata.CoHosts, tgtUser)
+		coll := mainDB.Collection(COLLECTION_ROOM)
+		if _, err = coll.UpdateOne(c.Request().Context(),
+			bson.D{{Key: "room_id", Value: roomID}},
+			bson.D{{Key: "$set", Value: bson.D{{
+				Key:   "cohosts",
+				Value: lkRoomMetadata.CoHosts,
+			}}}}); err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+	} else if operation == "kick" {
+		lkRoomMetadata.Kicked = append(lkRoomMetadata.Kicked, tgtUser)
+		lkRoomServiceClient.RemoveParticipant(c.Request().Context(), &livekit.RoomParticipantIdentity{
+			Room:     roomID,
+			Identity: tgtUser.AudonID,
+		})
+	} else if operation == "demote" {
+		newPermission.CanPublish = false
+	} else {
+		return ErrInvalidRequestFormat
+	}
+
+	if operation == "demote" || operation == "cohost" {
+		newSpeakers := make([]*AudonUser, 0, len(lkRoomMetadata.Speakers))
+		for _, v := range lkRoomMetadata.Speakers {
+			if v.AudonID != tgtUser.AudonID {
+				newSpeakers = append(newSpeakers, v)
+			}
+		}
+		lkRoomMetadata.Speakers = newSpeakers
 	}
 
 	newMetadata, err := json.Marshal(lkRoomMetadata)
@@ -535,26 +570,28 @@ func updatePermissionHandler(c echo.Context) error {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	_, err = lkRoomServiceClient.UpdateRoomMetadata(c.Request().Context(), &livekit.UpdateRoomMetadataRequest{
-		Room:     roomID,
-		Metadata: string(newMetadata),
-	})
+
+	if operation != "kick" {
+		_, err = lkRoomServiceClient.UpdateParticipant(c.Request().Context(), &livekit.UpdateParticipantRequest{
+			Room:       roomID,
+			Identity:   audonID,
+			Permission: newPermission,
+		})
+		if err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError)
+		}
+	}
+
+	metadataRequest := &livekit.UpdateRoomMetadataRequest{Room: roomID, Metadata: string(newMetadata)}
+
+	_, err = lkRoomServiceClient.UpdateRoomMetadata(context.Background(), metadataRequest)
 	if err != nil {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
-	info, err := lkRoomServiceClient.UpdateParticipant(c.Request().Context(), &livekit.UpdateParticipantRequest{
-		Room:       roomID,
-		Identity:   audonID,
-		Permission: newPermission,
-	})
-	if err != nil {
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError)
-	}
-
-	return c.JSON(http.StatusOK, info)
+	return c.NoContent(http.StatusOK)
 }
 
 func getRoomToken(room *Room, user *AudonUser, canTalk bool) (string, error) {

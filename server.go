@@ -179,7 +179,7 @@ func main() {
 	api.POST("/room/:id", joinRoomHandler)
 	api.PATCH("/room/:id", updateRoomHandler)
 	api.DELETE("/room/:id", closeRoomHandler)
-	api.PUT("/room/:room/:user", updatePermissionHandler)
+	api.PUT("/room/:id", updateRoleHandler)
 
 	e.Static("/assets", "audon-fe/dist/assets")
 	e.Static("/static", "audon-fe/dist/static")
