@@ -1,6 +1,6 @@
 {
   "name": "audon-fe",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "cp -v index.dev.html index.html && vite",
