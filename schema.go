@@ -90,11 +90,6 @@ func (a *AudonUser) GetCurrentLivekitRooms(ctx context.Context) ([]*livekit.Room
 				break
 			}
 		}
-		// check host
-		room, _ := getRoomMetadataFromLivekitRoom(r)
-		if room.IsHost(a) {
-			current = append(current, r)
-		}
 	}
 	return current, nil
 }

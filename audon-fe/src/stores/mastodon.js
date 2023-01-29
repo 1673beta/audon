@@ -30,7 +30,7 @@ export const useMastodonStore = defineStore("mastodon", {
         return `${url.origin}/u/@${this.oauth.audon.webfinger}`;
       }
       return "";
-    }
+    },
   },
   actions: {
     async fetchToken() {
@@ -56,7 +56,11 @@ export const useMastodonStore = defineStore("mastodon", {
     async revertAvatar() {
       const token = await axios.get("/api/token");
       const rooms = await axios.get("/api/room");
-      if (token.data.audon.avatar && rooms.data.length < 1) {
+      if (
+        token.data.audon.avatar &&
+        (rooms.data.length === 0 ||
+          (rooms.data.length === 1 && rooms.data[0].role === "host"))
+      ) {
         if (this.avatar) {
           await this.updateAvatar(this.avatar, token.data.audon.avatar);
         }

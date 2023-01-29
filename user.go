@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/livekit/protocol/livekit"
 	mastodon "github.com/mattn/go-mastodon"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -155,8 +156,9 @@ func (a *AudonUser) GetCurrentRoomStatus(ctx context.Context) ([]UserStatus, err
 	if err != nil {
 		return nil, err
 	}
+
 	roomList := make([]UserStatus, len(rooms))
-	for i, r := range rooms {
+	for _, r := range rooms {
 		meta, _ := getRoomMetadataFromLivekitRoom(r)
 		role := "listener"
 		if meta.Room.IsHost(a) {
@@ -166,10 +168,31 @@ func (a *AudonUser) GetCurrentRoomStatus(ctx context.Context) ([]UserStatus, err
 		} else if meta.IsSpeaker(a) {
 			role = "speaker"
 		}
-		roomList[i] = UserStatus{
+		roomList = append(roomList, UserStatus{
 			RoomID: r.GetName(),
 			Role:   role,
+		})
+	}
+
+	for _, s := range roomList {
+		if s.Role == "host" {
+			return roomList, nil
 		}
 	}
+
+	allRooms, err := lkRoomServiceClient.ListRooms(ctx, &livekit.ListRoomsRequest{})
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range allRooms.GetRooms() {
+		meta, _ := getRoomMetadataFromLivekitRoom(r)
+		if meta.IsHost(a) {
+			roomList = append(roomList, UserStatus{
+				RoomID: r.GetName(),
+				Role:   "host",
+			})
+		}
+	}
+
 	return roomList, nil
 }

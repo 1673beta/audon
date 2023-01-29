@@ -257,14 +257,6 @@ func joinRoomHandler(c echo.Context) (err error) {
 		return ErrAlreadyEnded
 	}
 
-	lkRoom, _ := getRoomInLivekit(c.Request().Context(), room.RoomID) // lkRoom will be nil if it doesn't exist
-	if lkRoom == nil {
-		return ErrRoomNotFound
-	}
-
-	roomMetadata, _ := getRoomMetadataFromLivekitRoom(lkRoom)
-	room = roomMetadata.Room
-
 	canTalk := room.IsHost(user) || room.IsCoHost(user) // host and cohost can talk from the beginning
 
 	// check room restriction
@@ -301,6 +293,12 @@ func joinRoomHandler(c echo.Context) (err error) {
 			return c.String(http.StatusForbidden, string(room.Restriction))
 		}
 	}
+
+	lkRoom, _ := getRoomInLivekit(c.Request().Context(), room.RoomID) // lkRoom will be nil if it doesn't exist
+	if lkRoom == nil {
+		return ErrRoomNotFound
+	}
+	roomMetadata, _ := getRoomMetadataFromLivekitRoom(lkRoom)
 
 	// return 403 if one has been kicked
 	for _, kicked := range roomMetadata.Kicked {
