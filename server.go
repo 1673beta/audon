@@ -155,8 +155,8 @@ func main() {
 	e.Use(session.Middleware(redisStore))
 
 	// Setup caches
-	userSessionCache = ttlcache.New(ttlcache.WithTTL[string, *SessionData](24 * time.Hour))
-	webhookTimerCache = ttlcache.New(ttlcache.WithTTL[string, *time.Timer](60 * time.Second))
+	userSessionCache = ttlcache.New(ttlcache.WithTTL[string, *SessionData](168 * time.Hour))
+	webhookTimerCache = ttlcache.New(ttlcache.WithTTL[string, *time.Timer](5 * time.Minute))
 	orphanRooms = ttlcache.New(ttlcache.WithTTL[string, bool](24 * time.Hour))
 	go userSessionCache.Start()
 	go webhookTimerCache.Start()

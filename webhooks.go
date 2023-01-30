@@ -92,7 +92,6 @@ func livekitWebhookHandler(c echo.Context) error {
 						log.Println(err)
 					}
 					nextUser.ClearUserAvatar(ctx)
-					userSessionCache.Delete(audonID)
 				} else if err != nil {
 					log.Println(err)
 				}

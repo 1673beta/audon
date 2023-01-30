@@ -415,8 +415,6 @@ func joinRoomHandler(c echo.Context) (err error) {
 	}
 
 	// Store user's session data in cache
-	data, _ := getSessionData(c)
-	userSessionCache.Set(user.AudonID, data, ttlcache.DefaultTTL)
 	orphanRooms.Delete(roomID)
 
 	return c.JSON(http.StatusOK, resp)

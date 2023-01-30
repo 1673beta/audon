@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/labstack/echo/v4"
 	mastodon "github.com/mattn/go-mastodon"
 	"github.com/oklog/ulid/v2"
@@ -228,6 +229,7 @@ func authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		data, err := getSessionData(c)
 		if err == nil && data.AudonID != "" {
 			if user, err := findUserByID(c.Request().Context(), data.AudonID); err == nil {
+				userSessionCache.Set(data.AudonID, data, ttlcache.DefaultTTL)
 				c.Set("user", user)
 				c.Set("data", data)
 				return next(c)
