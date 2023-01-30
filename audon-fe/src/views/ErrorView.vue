@@ -6,10 +6,7 @@ export default {
     };
   },
   created() {
-    const type = this.$route.params.type;
-    if (!type) return;
-
-    if (type === "offline") {
+    if (this.name === "offline") {
       alert(this.$t("errors.offline"));
       this.$router.push({ name: "home" });
     }

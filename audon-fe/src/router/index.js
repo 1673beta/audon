@@ -15,8 +15,8 @@ const router = createRouter({
       component: ErrorView,
     },
     {
-      path: "/error/:type",
-      name: "error",
+      path: "/offline",
+      name: "offline",
       meta: {
         noauth: true,
       },

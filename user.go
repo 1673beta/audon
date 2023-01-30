@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -110,16 +109,7 @@ func redirectUserHandler(c echo.Context) error {
 		}
 	}
 
-	query := make(url.Values)
-	query.Add("url", user.RemoteURL)
-	result := url.URL{
-		Path:       "/error/offline",
-		ForceQuery: true,
-		OmitHost:   true,
-		RawQuery:   query.Encode(),
-	}
-
-	return c.Redirect(http.StatusFound, result.String())
+	return c.Redirect(http.StatusFound, "/offline")
 }
 
 func (a *AudonUser) Equal(u *AudonUser) bool {
