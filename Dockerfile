@@ -4,8 +4,9 @@ WORKDIR /workspace
 
 COPY audon-fe/ /workspace/
 
-RUN npm install && \
-    npm run build
+RUN npm install -g pnpm && \
+    pnpm install && \
+    pnpm run build
 
 FROM golang:1.19-bullseye
 
