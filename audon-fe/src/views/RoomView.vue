@@ -5,7 +5,7 @@ import { useMastodonStore } from "../stores/mastodon";
 import { map, some, omit, filter, trim, clone, differenceBy } from "lodash-es";
 import { darkTheme } from "picmo";
 import { createPopup } from "@picmo/popup-picker";
-import { TwemojiRenderer } from "picmo/renderers/twemoji";
+import { TwemojiRenderer } from "@picmo/renderer-twemoji";
 import { Howl } from "howler";
 import Participant from "../components/Participant.vue";
 import JoinDialog from "../components/JoinDialog.vue";

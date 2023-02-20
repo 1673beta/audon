@@ -4,6 +4,7 @@ specifiers:
   '@intlify/unplugin-vue-i18n': ^0.8.1
   '@mdi/js': ^7.0.96
   '@picmo/popup-picker': ^5.7.2
+  '@picmo/renderer-twemoji': ^5.7.6
   '@rushstack/eslint-patch': ^1.1.4
   '@uriopass/nosleep.js': ^0.12.2
   '@vitejs/plugin-vue': ^3.2.0
@@ -32,6 +33,7 @@ specifiers:
 dependencies:
   '@intlify/unplugin-vue-i18n': 0.8.2_vue-i18n@9.2.2
   '@picmo/popup-picker': 5.7.6_picmo@5.7.6
+  '@picmo/renderer-twemoji': 5.7.6_picmo@5.7.6
   '@uriopass/nosleep.js': 0.12.2
   '@vuelidate/core': 2.0.0_vue@3.2.47
   '@vuelidate/validators': 2.0.0_vue@3.2.47
@@ -287,6 +289,15 @@ packages:
     dependencies:
       '@floating-ui/dom': 1.2.1
       picmo: 5.7.6
+    dev: false
+
+  /@picmo/renderer-twemoji/5.7.6_picmo@5.7.6:
+    resolution: {integrity: sha512-pcbxxyKcL4i6J05Q5l5IiapUfYTZ91TVyA4+nBS7msysYDzlRVWLW7oiiUv8YThHtyzNdOB/3r9va1Qhsl18GA==}
+    peerDependencies:
+      picmo: ^5.7.0
+    dependencies:
+      picmo: 5.7.6
+      twemoji-parser: 14.0.0
     dev: false
 
   /@protobufjs/aspromise/1.1.2:
@@ -2031,6 +2042,10 @@ packages:
 
   /tslib/2.5.0:
     resolution: {integrity: sha512-336iVw3rtn2BUK7ORdIAHTyxHGRIHVReokCR3XjbckJMK7ms8FysBfhLR8IXnAgy7T0PTPNBWKiH514FOW/WSg==}
+    dev: false
+
+  /twemoji-parser/14.0.0:
+    resolution: {integrity: sha512-9DUOTGLOWs0pFWnh1p6NF+C3CkQ96PWmEFwhOVmT3WbecRC+68AIqpsnJXygfkFcp4aXbOp8Dwbhh/HQgvoRxA==}
     dev: false
 
   /type-check/0.4.0:
