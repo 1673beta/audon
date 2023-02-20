@@ -1,0 +1,11 @@
+# required fields
+api_key: devkey
+api_secret: secret
+ws_url: wss://livekit.example.com:7880
+redis:
+  address: 127.0.0.1:6379
+  db: 1
+
+# optional fields
+template_base: https://example.com/egress
+insecure: false

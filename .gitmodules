@@ -1,0 +1,3 @@
+[submodule "peertube"]
+	path = peertube
+	url = https://framagit.org/framasoft/peertube/clients/go.git

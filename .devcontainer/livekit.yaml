@@ -18,6 +18,10 @@ webhook:
   urls:
     - http://devcontainer:8100/app/webhook
 
+redis:
+  address: redis:6379
+  db: 1
+
 room:
   auto_create: false
   empty_timeout: 30

@@ -16,6 +16,7 @@ type (
 	AppConfig struct {
 		AppConfigBase
 		Livekit  *LivekitConfig
+		PeerTube *PeerTubeConfig
 		MongoURL *url.URL
 		Database *DBConfig
 		Redis    *RedisConfig
@@ -29,6 +30,16 @@ type (
 		LogoImageBlueBack  image.Image
 		LogoImageWhiteBack image.Image
 		LogoImageFront     image.Image
+	}
+
+	PeerTubeConfig struct {
+		Enable       bool
+		Server       *url.URL
+		User         string
+		Password     string
+		ClientID     string
+		ClientSecret string
+		AccessToken  string
 	}
 
 	LivekitConfig struct {
@@ -204,6 +215,22 @@ func loadConfig(envname string) (*AppConfig, error) {
 		}
 	}
 	appConf.Bot = botConf
+
+	// Setup PeerTube config
+	ptHost := os.Getenv("PEERTUBE_SERVER")
+	ptConf := &PeerTubeConfig{
+		Enable:   ptHost != "",
+		User:     os.Getenv("PEERTUBE_USER"),
+		Password: os.Getenv("PEERTUBE_PASSWORD"),
+	}
+	if ptConf.Enable {
+		ptConf.Server = &url.URL{
+			Host:   ptHost,
+			Scheme: "https",
+			Path:   "/",
+		}
+	}
+	appConf.PeerTube = ptConf
 
 	return &appConf, nil
 }
