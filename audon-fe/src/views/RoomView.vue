@@ -545,7 +545,7 @@ export default {
             emojiSize: "1.8rem",
             autoFocus: "none",
             showPreview: false,
-            renderer: new TwemojiRenderer(),
+            renderer: new TwemojiRenderer("png"),
           },
           {
             referenceElement: btn,
@@ -555,8 +555,8 @@ export default {
           }
         );
         const self = this;
-        picker.addEventListener("emoji:select", ({ emoji }) => {
-          self.onEmojiSelected(emoji);
+        picker.addEventListener("emoji:select", ({ url }) => {
+          self.onEmojiSelected(url);
         });
         this.emojiPicker = picker;
       }

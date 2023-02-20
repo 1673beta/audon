@@ -77,7 +77,9 @@ export default {
           scrim="#000000"
           class="align-center justify-center reaction"
         >
-          <span>{{ emoji }}</span>
+          <div class="d-flex align-center justify-center">
+            <img class="emoji" :src="emoji" />
+          </div>
         </v-overlay>
         <v-img
           :class="{ cursorPointer: enableMenu }"
@@ -100,7 +102,9 @@ export default {
         scrim="#000000"
         class="align-center justify-center reaction"
       >
-        <span>{{ emoji }}</span>
+        <div class="d-flex align-center justify-center">
+          <img class="emoji" :src="emoji" />
+        </div>
       </v-overlay>
       <v-img
         :class="{ cursorPointer: enableMenu }"
@@ -147,10 +151,8 @@ export default {
   outline: 3px solid cornflowerblue;
 }
 
-.reaction span {
-  font-size: 2rem;
-  color: white;
-  text-align: center;
+.reaction img {
+  height: 2rem;
 }
 
 .cursorPointer {
