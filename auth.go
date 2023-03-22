@@ -66,7 +66,7 @@ func loginHandler(c echo.Context) (err error) {
 			req.Redirect = "/"
 		}
 
-		appConfig, err := getAppConfig(serverURL.String(), req.Redirect)
+		appConfig, err := getAppConfig(serverURL.String())
 		if err != nil {
 			return ErrInvalidRequestFormat
 		}
@@ -89,6 +89,15 @@ func loginHandler(c echo.Context) (err error) {
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
+		redirURL, err := url.Parse(mastApp.AuthURI)
+		if err != nil {
+			c.Logger().Warn(err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "invalid_auth_uri")
+		}
+		q := redirURL.Query()
+		q.Add("state", req.Redirect)
+		redirURL.RawQuery = q.Encode()
+
 		return c.String(http.StatusCreated, mastApp.AuthURI)
 	}
 
@@ -96,8 +105,8 @@ func loginHandler(c echo.Context) (err error) {
 }
 
 type OAuthRequest struct {
-	Code     string `query:"code"`
-	Redirect string `query:"redir"`
+	Code  string `query:"code"`
+	State string `query:"state"`
 }
 
 // handler for GET to /app/oauth?code=****
@@ -122,7 +131,7 @@ func oauthHandler(c echo.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	appConf, err := getAppConfig(data.MastodonConfig.Server, req.Redirect)
+	appConf, err := getAppConfig(data.MastodonConfig.Server)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -178,7 +187,7 @@ func oauthHandler(c echo.Context) (err error) {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
-	return c.Redirect(http.StatusFound, req.Redirect)
+	return c.Redirect(http.StatusFound, req.State)
 }
 
 func getUserTokenHandler(c echo.Context) (err error) {

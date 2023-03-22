@@ -225,19 +225,13 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 	return nil
 }
 
-func getAppConfig(server string, redirPath string) (*mastodon.AppConfig, error) {
-	if redirPath == "" {
-		redirPath = "/"
-	}
+func getAppConfig(server string) (*mastodon.AppConfig, error) {
 	redirectURI := "urn:ietf:wg:oauth:2.0:oob"
 	u := &url.URL{
 		Host:   mainConfig.LocalDomain,
 		Scheme: "https",
 		Path:   "/",
 	}
-	q := u.Query()
-	q.Add("redir", redirPath)
-	u.RawQuery = q.Encode()
 	u = u.JoinPath("app", "oauth")
 	redirectURI = u.String()
 
