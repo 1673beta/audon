@@ -98,7 +98,7 @@ func loginHandler(c echo.Context) (err error) {
 		q.Add("state", req.Redirect)
 		redirURL.RawQuery = q.Encode()
 
-		return c.String(http.StatusCreated, mastApp.AuthURI)
+		return c.String(http.StatusCreated, redirURL.String())
 	}
 
 	return c.NoContent(http.StatusNoContent)
