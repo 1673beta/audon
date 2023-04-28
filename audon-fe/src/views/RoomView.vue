@@ -257,6 +257,18 @@ export default {
       }
       return mdiMicrophone;
     },
+    micStatusLabel() {
+      if (!this.micGranted) {
+        return this.$t("micStatus.retry");
+      }
+      if (!(this.iamHost || this.iamCohost || this.iamSpeaker)) {
+        return this.$t("micStatus.request");
+      }
+      if (this.iamMuted) {
+        return this.$t("micStatus.unmute");
+      }
+      return this.$t("micStatus.mute");
+    },
     titleErrors() {
       const errors = this.v$.editingRoomInfo.title.$errors;
       const messages = map(errors, (e) => e.$message);
@@ -797,6 +809,7 @@ export default {
                 :icon="mdiCheck"
                 :disabled="isRequestLoading"
                 @click.once="onModerate(id, 'speaker')"
+                :aria-label="$t('requestOperation.accept')"
               ></v-btn>
               <v-btn
                 size="small"
@@ -804,6 +817,7 @@ export default {
                 :icon="mdiClose"
                 :disabled="isRequestLoading"
                 @click="onDeclineRequest(id)"
+                :aria-label="$t('requestOperation.decline')"
               ></v-btn>
             </template>
             <v-list-item-subtitle>
@@ -839,6 +853,7 @@ export default {
         @click="showRequestedNotification = false"
         :icon="mdiClose"
         size="small"
+        :aria-label="$t('close')"
       ></v-btn>
     </template>
   </v-snackbar>
@@ -863,6 +878,7 @@ export default {
         @click="showRequestNotification = false"
         :icon="mdiClose"
         size="small"
+        :aria-label="$('close')"
       ></v-btn>
     </template>
   </v-snackbar>
@@ -879,6 +895,7 @@ export default {
             size="small"
             variant="text"
             color="white"
+            :aria-label="$t('roomOperation.edit')"
             :icon="mdiPencil"
             @click="showEditDialog = true"
           ></v-btn>
@@ -955,6 +972,7 @@ export default {
       <v-card-actions v-else class="justify-center" style="gap: 20px">
         <v-btn
           :icon="mdiEmoticon"
+          :aria-label="$t('emojiReaction')"
           color="white"
           variant="flat"
           @click="onPickerPopup"
@@ -963,6 +981,7 @@ export default {
         </v-btn>
         <v-btn
           :icon="micStatusIcon"
+          :aria-label="micStatusLabel"
           color="white"
           variant="flat"
           @click="onToggleMute"
@@ -972,6 +991,7 @@ export default {
             <v-btn
               :icon="mdiLogout"
               color="red"
+              :aria-label="$t('roomOperation.operation')"
               :disabled="loading"
               variant="flat"
               v-bind="props"
@@ -980,6 +1000,7 @@ export default {
           <v-list>
             <v-list-item
               :title="$t('closeRoom')"
+              :aria-label="$t('roomOperation.close')"
               :prepend-icon="mdiCloseBoxOutline"
               @click="onRoomClose"
               class="text-red"
@@ -987,6 +1008,7 @@ export default {
             <v-list-item
               :disabled="isLastHost"
               :title="$t('leaveRoom')"
+              :aria-label="$t('roomOperation.leave')"
               :prepend-icon="mdiExitRun"
               @click="onLeave"
             >
@@ -998,6 +1020,7 @@ export default {
           :icon="mdiLogout"
           color="red"
           :disabled="loading"
+          :aria-label="$t('roomOperation.leave')"
           @click="onLeave"
           variant="flat"
         ></v-btn>
@@ -1009,6 +1032,7 @@ export default {
         >
           <v-btn
             :icon="mdiAccountVoice"
+            :aria-label="$t('roomOperation.openRequests')"
             variant="flat"
             color="white"
             @click="
