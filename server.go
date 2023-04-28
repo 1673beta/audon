@@ -236,8 +236,9 @@ func getAppConfig(server string) (*mastodon.AppConfig, error) {
 	redirectURI = u.String()
 
 	conf := &mastodon.AppConfig{
-		ClientName:   "Audon",
-		Scopes:       "read:accounts read:follows write:accounts",
+		ClientName: "Audon",
+		// Scopes:       "read:accounts read:follows write:accounts",
+		Scopes:       "read:accounts read:follows",
 		Website:      "https://codeberg.org/nmkj/audon",
 		RedirectURIs: redirectURI,
 	}

@@ -47,11 +47,14 @@ export const useMastodonStore = defineStore("mastodon", {
       this.authorized = true;
     },
     async updateAvatar(img, filename) {
+      return;
+      /*
       if (this.client === null) return;
       const avatarBlob = await (await fetch(img)).blob();
       this.userinfo = await this.client.v1.accounts.updateCredentials({
         avatar: new File([avatarBlob], `${Date.now()}_${filename}`),
       });
+      */
     },
     async revertAvatar() {
       const token = await axios.get("/api/token");

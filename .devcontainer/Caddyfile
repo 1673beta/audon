@@ -16,7 +16,7 @@ audon.localhost {
     }
 }
 
-livekit.audon.localhost {
+livekit.localhost {
     tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem
     encode zstd gzip
     reverse_proxy livekit:7880

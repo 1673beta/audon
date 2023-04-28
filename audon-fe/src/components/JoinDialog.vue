@@ -28,7 +28,8 @@ export default {
   },
   computed: {
     uploadEnabled() {
-      return this.roomToken?.original && this.roomToken?.indicator;
+      // return this.roomToken?.original && this.roomToken?.indicator;
+      return false;
     },
   },
   async mounted() {
