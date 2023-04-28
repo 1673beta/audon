@@ -2,10 +2,12 @@ version: '3.1'
 
 services:
   devcontainer:
-    image: "mcr.microsoft.com/devcontainers/base:jammy"
+    image: "mcr.microsoft.com/devcontainers/base:debian"
     volumes:
-      - ../..:/workspaces:cached
+      - ..:/audon-go:cached
     command: sleep infinity
+    environment:
+      - "DOCKER_HOST=unix:///run/user/1000/docker.sock"
 
   db:
     image: mongo:6
