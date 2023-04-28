@@ -30,8 +30,7 @@
         "golang.go",
         "Vue.volar",
         "esbenp.prettier-vscode",
-        "EditorConfig.EditorConfig",
-        "ms-azuretools.vscode-docker"
+        "EditorConfig.EditorConfig"
       ]
     }
   },
