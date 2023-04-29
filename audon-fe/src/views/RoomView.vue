@@ -258,11 +258,11 @@ export default {
       return mdiMicrophone;
     },
     micStatusLabel() {
-      if (!this.micGranted) {
-        return this.$t("micStatus.retry");
-      }
       if (!(this.iamHost || this.iamCohost || this.iamSpeaker)) {
         return this.$t("micStatus.request");
+      }
+      if (!this.micGranted) {
+        return this.$t("micStatus.retry");
       }
       if (this.iamMuted) {
         return this.$t("micStatus.unmute");
