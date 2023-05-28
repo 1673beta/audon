@@ -10,7 +10,9 @@
 
 Audio + Mastodon = Audon
 
-Audon is a service of realtime audio streaming for Mastodon.
+Audon is a service of realtime audio chat for Mastodon, Akkoma, GoToSocial, and Calckey.
+
+Other Fediverse platforms supporting Mastodon API may work, but not tested (yet).
 
 ## Tech Stack
 
