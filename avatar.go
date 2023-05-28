@@ -93,10 +93,10 @@ func (u *AudonUser) GetIndicator(ctx context.Context, fnew []byte, room *Room) (
 		return
 	}
 
-	indicator, err = u.createGIF(newImg, room.IsHost(u) || room.IsCoHost(u))
-	if err != nil {
-		return
-	}
+	// indicator, err = u.createGIF(newImg, room.IsHost(u) || room.IsCoHost(u))
+	// if err != nil {
+	// 	return
+	// }
 
 	return indicator, origImg, isGIF, nil
 }
