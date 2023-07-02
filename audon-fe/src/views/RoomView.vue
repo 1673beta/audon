@@ -3,9 +3,8 @@ import axios from "axios";
 import { pushNotFound, webfinger } from "../assets/utils";
 import { useMastodonStore } from "../stores/mastodon";
 import { map, some, omit, filter, trim, clone, differenceBy } from "lodash-es";
-import { darkTheme } from "picmo";
+import { darkTheme, NativeRenderer } from "picmo";
 import { createPopup } from "@picmo/popup-picker";
-import { TwemojiRenderer } from "@picmo/renderer-twemoji";
 import { Howl } from "howler";
 import Participant from "../components/Participant.vue";
 import JoinDialog from "../components/JoinDialog.vue";
@@ -557,7 +556,7 @@ export default {
             emojiSize: "1.8rem",
             autoFocus: "none",
             showPreview: false,
-            renderer: new TwemojiRenderer(),
+            renderer: new NativeRenderer(),
           },
           {
             referenceElement: btn,
