@@ -381,10 +381,8 @@ export default {
               <template v-slot:label>
                 <i18n-t keypath="form.advertise" tag="div">
                   <template v-slot:bot>
-                    <a
-                      href="https://akkoma.audon.space/users/now"
-                      target="_blank"
-                      >now@audon.space</a
+                    <a href="https://i.audon.space/@now" target="_blank"
+                      >now@i.audon.space</a
                     >
                   </template>
                 </i18n-t>
