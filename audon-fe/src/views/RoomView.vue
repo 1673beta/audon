@@ -557,7 +557,7 @@ export default {
             emojiSize: "1.8rem",
             autoFocus: "none",
             showPreview: false,
-            renderer: new TwemojiRenderer("png"),
+            renderer: new TwemojiRenderer(),
           },
           {
             referenceElement: btn,
