@@ -4,6 +4,10 @@
 
 ----
 
+This repository is archived and will no longer be updated. Successor: [Hamabē](https://codeberg.org/hamabe/hamabe)
+
+----
+
 <div align="right">
     <img src="audon-fe/src/assets/img/mascot.webp" alt="Mascot" width="150" align="right" title="Mascot designed by Taiyo Fujii" />
 </div>
